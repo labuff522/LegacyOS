@@ -1,7 +1,4 @@
 # LegacyOS
-Solution for organizing a complex gym that provides multiple products, spaces, and requires coaching
-
-# LegacyOS
 
 LegacyOS is the operating platform solution for organizing a complex gym that provides multiple products and spaces, and requires coaching.
 
