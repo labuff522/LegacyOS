@@ -1,6 +1,16 @@
--- LegacyOS migration v0.2
--- Non-destructive update for academy_platform_schema_v0_1.sql
--- Adds business-rule registry, roles/permissions, users, audit log, integration tracking, and access policies.
+/******************************************************************************
+LegacyOS Migration: 002
+
+Name: Core Platform
+
+Purpose:
+Adds business rules, users, roles, permissions, audit logging,
+and vendor integration tables.
+
+Author:
+Jason LaBuff
+
+******************************************************************************/
 
 BEGIN;
 
