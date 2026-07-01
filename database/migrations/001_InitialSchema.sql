@@ -1,6 +1,15 @@
--- Academy Platform Database Schema v0.1
--- Target: PostgreSQL
--- Purpose: MVP schema for wrestling academy membership, scheduling, reservations, billing, and access control.
+/******************************************************************************
+LegacyOS Migration: 001
+
+Name: Initial Schema
+
+Purpose:
+Creates the initial LegacyOS database schema.
+
+Author:
+Jason LaBuff
+
+******************************************************************************/
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
