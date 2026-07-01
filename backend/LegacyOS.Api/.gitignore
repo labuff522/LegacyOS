@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Build output
+bin/
+obj/
+
+# User settings
+*.user
+*.suo
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+
+# Logs
+*.log
