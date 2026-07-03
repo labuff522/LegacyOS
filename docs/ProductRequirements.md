@@ -1502,3 +1502,535 @@ Business rules define the behavior of LegacyOS.
 When implementation details conflict with these rules, the implementation should change—not the business rule.
 
 These rules represent how Legacy organizations operate and should evolve only when the business itself evolves.
+
+---
+
+# Chapter 5 - Core User Workflows
+
+## Purpose
+
+LegacyOS is designed around workflows rather than features.
+
+A workflow represents a complete task that delivers value to a user.
+
+Every workflow should minimize clicks, reduce administrative effort, and provide a predictable experience.
+
+Future user interfaces should be evaluated based on how efficiently they complete these workflows.
+
+---
+
+# Primary User Roles
+
+LegacyOS serves six primary roles.
+
+Owner
+
+Organization Administrator
+
+Front Desk
+
+Coach
+
+Guardian
+
+Athlete
+
+Each workflow should identify which role performs it.
+
+---
+
+# Workflow 1 - Register a New Family
+
+Role:
+
+Front Desk or Guardian
+
+Goal:
+
+Create a new Family account and register the first Athlete.
+
+Success Criteria:
+
+• Family created
+
+• Guardian created
+
+• Athlete created
+
+• Required waivers assigned
+
+• Welcome communication sent
+
+Estimated Completion Time:
+
+Under 5 minutes
+
+Future Automation:
+
+Address verification
+
+Duplicate family detection
+
+Automatic welcome email
+
+---
+
+# Workflow 2 - Enroll an Athlete
+
+Role:
+
+Administrator
+
+Goal:
+
+Enroll an Athlete into a Membership Plan.
+
+Success Criteria:
+
+Membership selected
+
+Pricing confirmed
+
+Enrollment created
+
+Billing initiated
+
+Eligibility updated
+
+Door access updated
+
+Future Automation:
+
+Prorated billing
+
+Scholarship application
+
+Automatic recurring payments
+
+---
+
+# Workflow 3 - Schedule Programs
+
+Role:
+
+Administrator
+
+Goal:
+
+Create seasonal Training Blocks.
+
+Success Criteria:
+
+Coach assigned
+
+Room assigned
+
+Capacity defined
+
+Schedule published
+
+Reservation availability enabled
+
+Future Automation:
+
+Conflict detection
+
+Coach availability suggestions
+
+Room optimization
+
+---
+
+# Workflow 4 - Reserve a Spot
+
+Role:
+
+Guardian
+
+Goal:
+
+Reserve attendance for a limited-capacity event.
+
+Examples:
+
+Open Mat
+
+Camp
+
+Clinic
+
+Special Practice
+
+Success Criteria:
+
+Reservation confirmed
+
+Capacity updated
+
+Confirmation delivered
+
+Waitlist handled if necessary
+
+Future Automation:
+
+Automatic waitlist promotion
+
+Reminder notifications
+
+Calendar integration
+
+---
+
+# Workflow 5 - Check In
+
+Role:
+
+Front Desk
+
+Goal:
+
+Record athlete arrival.
+
+Success Criteria:
+
+Athlete located quickly
+
+Eligibility verified
+
+Attendance recorded
+
+Door access validated
+
+Estimated Completion Time:
+
+Less than 10 seconds
+
+Future Automation:
+
+QR code
+
+Phone check-in
+
+RFID
+
+Facial recognition (optional)
+
+---
+
+# Workflow 6 - Take Attendance
+
+Role:
+
+Coach
+
+Goal:
+
+Record attendance for an entire practice.
+
+Success Criteria:
+
+Roster displayed
+
+Attendance completed quickly
+
+Notes recorded if needed
+
+Estimated Completion Time:
+
+Less than 60 seconds
+
+Future Automation:
+
+Automatic attendance from check-in
+
+Voice entry
+
+AI attendance verification
+
+---
+
+# Workflow 7 - Sell a Private Lesson
+
+Role:
+
+Front Desk or Coach
+
+Goal:
+
+Schedule and collect payment for a private lesson.
+
+Success Criteria:
+
+Coach selected
+
+Time selected
+
+Payment collected
+
+Calendar updated
+
+Confirmation delivered
+
+Future Automation:
+
+Coach availability optimization
+
+Revenue sharing calculations
+
+Reminder messages
+
+---
+
+# Workflow 8 - Process Payment
+
+Role:
+
+Guardian
+
+Goal:
+
+Pay outstanding balance.
+
+Success Criteria:
+
+Invoice located
+
+Payment completed
+
+Receipt delivered
+
+Account updated
+
+Future Automation:
+
+AutoPay
+
+Stored payment methods
+
+Payment reminders
+
+---
+
+# Workflow 9 - Organization Dashboard
+
+Role:
+
+Owner
+
+Goal:
+
+Understand organization health in under two minutes.
+
+Dashboard should include:
+
+Revenue
+
+Enrollment
+
+Attendance
+
+Capacity
+
+Retention
+
+Outstanding invoices
+
+Upcoming events
+
+Scholarships
+
+Coach workload
+
+Future AI:
+
+Highlight unusual trends
+
+Forecast future revenue
+
+Identify retention risks
+
+Recommend operational improvements
+
+---
+
+# Workflow 10 - Coach Dashboard
+
+Role:
+
+Coach
+
+Goal:
+
+Know exactly what to do today.
+
+Dashboard should include:
+
+Today's practices
+
+Roster
+
+Attendance
+
+Private lessons
+
+Athlete notes
+
+Announcements
+
+Future AI:
+
+Practice suggestions
+
+Attendance concerns
+
+Athlete development reminders
+
+---
+
+# Workflow 11 - Guardian Dashboard
+
+Role:
+
+Guardian
+
+Goal:
+
+Manage family participation.
+
+Dashboard should include:
+
+Upcoming practices
+
+Invoices
+
+Reservations
+
+Attendance
+
+Announcements
+
+Messages
+
+Waivers
+
+Door credentials
+
+Future AI:
+
+Suggested programs
+
+Upcoming deadlines
+
+Recommended camps
+
+Training reminders
+
+---
+
+# Workflow 12 - AI Operational Assistant
+
+Role:
+
+Administrator
+
+Goal:
+
+Ask operational questions using natural language.
+
+Examples:
+
+Show unpaid invoices.
+
+Who has missed practice twice this month?
+
+Which classes are over capacity?
+
+Who has inactive waivers?
+
+What programs are growing?
+
+Future Goal:
+
+Every report should eventually be available through conversational AI.
+
+---
+
+# Workflow Priorities
+
+Phase 1
+
+Family Registration
+
+Enrollment
+
+Scheduling
+
+Attendance
+
+Billing
+
+Payments
+
+---
+
+Phase 2
+
+Reservations
+
+Private Lessons
+
+Communications
+
+Door Access
+
+Reporting
+
+---
+
+Phase 3
+
+AI Assistant
+
+Mobile Applications
+
+Coach Tools
+
+Guardian Portal
+
+Advanced Analytics
+
+---
+
+# Development Philosophy
+
+LegacyOS should always be built vertically.
+
+Complete one workflow before starting another.
+
+Each completed workflow should include:
+
+Database
+
+Business Logic
+
+API
+
+User Interface
+
+Testing
+
+Documentation
+
+Deployment
+
+A workflow is not complete until a real user can perform it successfully.
+
+---
+
+# Closing Statement
+
+The success of LegacyOS will not be measured by the number of features it contains.
+
+It will be measured by how effortlessly users complete the workflows that matter most.
+
+Every sprint should improve at least one workflow.
