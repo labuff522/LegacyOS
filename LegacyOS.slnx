@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/LegacyOS.Api/LegacyOS.Api.csproj" />
+  </Folder>
+</Solution>
