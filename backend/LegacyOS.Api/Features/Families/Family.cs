@@ -9,27 +9,13 @@ public class Family
     [MaxLength(150)]
     public string FamilyName { get; set; } = string.Empty;
 
-    [MaxLength(150)]
-    public string PrimaryContactName { get; set; } = string.Empty;
-
-    [MaxLength(255)]
-    public string Email { get; set; } = string.Empty;
-
-    [MaxLength(25)]
-    public string? Phone { get; set; }
-
-    [MaxLength(500)]
-    public string? BillingAddress { get; set; }
-
-    [MaxLength(150)]
-    public string? EmergencyContactName { get; set; }
-
-    [MaxLength(25)]
-    public string? EmergencyContactPhone { get; set; }
-
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
     public DateTime? ModifiedOn { get; set; }
+
+    public ICollection<Guardian> Guardians { get; set; } = new List<Guardian>();
+
+    public ICollection<Athlete> Athletes { get; set; } = new List<Athlete>();
 }

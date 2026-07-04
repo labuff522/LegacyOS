@@ -12,9 +12,14 @@ public class LegacyOSDbContext : DbContext
 
     public DbSet<Family> Families => Set<Family>();
 
+    public DbSet<Guardian> Guardians => Set<Guardian>();
+
+    public DbSet<Athlete> Athletes => Set<Athlete>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(LegacyOSDbContext).Assembly);
+
         base.OnModelCreating(modelBuilder);
     }
 }
