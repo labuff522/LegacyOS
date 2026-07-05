@@ -13,8 +13,12 @@ builder.Services.AddDbContext<LegacyOSDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("LegacyOS")));
 
+// Business Services
+builder.Services.AddScoped<FamilyRegistrationService>();
+
 var app = builder.Build();
 
+// OpenAPI
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -22,6 +26,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Health Check
 app.MapGet("/health", async (LegacyOSDbContext db, IConfiguration config) =>
 {
     var connectionString = config.GetConnectionString("LegacyOS");
@@ -49,10 +54,9 @@ app.MapGet("/health", async (LegacyOSDbContext db, IConfiguration config) =>
         });
     }
 });
+
+// Feature Endpoints
 app.MapFamilyEndpoints();
 app.MapRegistrationEndpoints();
 
 app.Run();
-
-builder.Services.AddDbContext<LegacyOSDbContext>(options =>
-    options.UseNpgsql("Host=localhost;Port=5432;Database=lwaDB;Username=postgres;Password=Thisshouldworkdick1@"));

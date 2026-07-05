@@ -1,5 +1,3 @@
-using LegacyOS.Api.Data;
-
 namespace LegacyOS.Api.Features.Registration;
 
 public static class RegistrationEndpoints
@@ -10,16 +8,11 @@ public static class RegistrationEndpoints
 
         group.MapPost("/family", async (
             FamilyRegistrationRequest request,
-            LegacyOSDbContext db) =>
+            FamilyRegistrationService service) =>
         {
-            // For now we're just proving the request reaches the API.
-            // We'll save everything in the next step.
+            var response = await service.RegisterFamilyAsync(request);
 
-            return Results.Ok(new
-            {
-                message = "Registration request received.",
-                family = request
-            });
+            return Results.Created($"/families/{response.FamilyId}", response);
         });
 
         return group;
