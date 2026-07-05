@@ -1,3 +1,4 @@
+using LegacyOS.Api.Features.Organizations;
 using System.ComponentModel.DataAnnotations;
 
 namespace LegacyOS.Api.Features.Families;
@@ -18,4 +19,7 @@ public class Family
     public ICollection<Guardian> Guardians { get; set; } = new List<Guardian>();
 
     public ICollection<Athlete> Athletes { get; set; } = new List<Athlete>();
+
+    public ICollection<FamilyOrganization> FamilyOrganizations { get; set; } =
+        new List<FamilyOrganization>();
 }
