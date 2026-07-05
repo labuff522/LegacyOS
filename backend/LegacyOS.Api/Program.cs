@@ -1,24 +1,24 @@
 using LegacyOS.Api.Data;
 using LegacyOS.Api.Features.Families;
+using LegacyOS.Api.Features.Memberships;
 using LegacyOS.Api.Features.Registration;
+using LegacyOS.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// OpenAPI
 builder.Services.AddOpenApi();
 
-// PostgreSQL
 builder.Services.AddDbContext<LegacyOSDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("LegacyOS")));
 
-// Business Services
 builder.Services.AddScoped<FamilyRegistrationService>();
 
 var app = builder.Build();
 
-// OpenAPI
+await DatabaseInitializer.InitializeAsync(app.Services);
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -26,11 +26,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Health Check
-app.MapGet("/health", async (LegacyOSDbContext db, IConfiguration config) =>
+app.MapGet("/health", async (LegacyOSDbContext db) =>
 {
-    var connectionString = config.GetConnectionString("LegacyOS");
-
     try
     {
         await db.Database.OpenConnectionAsync();
@@ -39,8 +36,7 @@ app.MapGet("/health", async (LegacyOSDbContext db, IConfiguration config) =>
         return Results.Ok(new
         {
             status = "LegacyOS Online",
-            database = "Connected",
-            hasConnectionString = !string.IsNullOrWhiteSpace(connectionString)
+            database = "Connected"
         });
     }
     catch (Exception ex)
@@ -49,14 +45,13 @@ app.MapGet("/health", async (LegacyOSDbContext db, IConfiguration config) =>
         {
             status = "LegacyOS Online",
             database = "Not Connected",
-            hasConnectionString = !string.IsNullOrWhiteSpace(connectionString),
             error = ex.Message
         });
     }
 });
 
-// Feature Endpoints
 app.MapFamilyEndpoints();
 app.MapRegistrationEndpoints();
+app.MapMembershipEndpoints();
 
 app.Run();

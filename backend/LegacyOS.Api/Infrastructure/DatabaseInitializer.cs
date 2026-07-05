@@ -1,0 +1,158 @@
+using LegacyOS.Api.Data;
+using LegacyOS.Api.Features.Memberships;
+using LegacyOS.Api.Features.Organizations;
+using Microsoft.EntityFrameworkCore;
+
+namespace LegacyOS.Api.Infrastructure;
+
+public static class DatabaseInitializer
+{
+    public static async Task InitializeAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+
+        var db = scope.ServiceProvider.GetRequiredService<LegacyOSDbContext>();
+
+        await db.Database.MigrateAsync();
+
+        if (!await db.Organizations.AnyAsync())
+        {
+            var wolfpack = new Organization
+            {
+                Id = Guid.NewGuid(),
+                Name = "Wolfpack Wrestling Club",
+                ShortName = "Wolfpack",
+                OrganizationType = OrganizationType.NonProfit,
+                IsActive = true,
+                CreatedOn = DateTime.UtcNow
+            };
+
+            var theDen = new Organization
+            {
+                Id = Guid.NewGuid(),
+                Name = "The Den at Legacy",
+                ShortName = "TheDen",
+                OrganizationType = OrganizationType.Commercial,
+                IsActive = true,
+                CreatedOn = DateTime.UtcNow
+            };
+
+            db.Organizations.AddRange(wolfpack, theDen);
+
+            var openMat = new Service
+            {
+                Id = Guid.NewGuid(),
+                Organization = wolfpack,
+                Name = "Open Mat",
+                ShortName = "OpenMat"
+            };
+
+            var seriousYouth = new Service
+            {
+                Id = Guid.NewGuid(),
+                Organization = wolfpack,
+                Name = "Serious Youth Wrestlers",
+                ShortName = "SeriousYouth"
+            };
+
+            var hsWrestling = new Service
+            {
+                Id = Guid.NewGuid(),
+                Organization = wolfpack,
+                Name = "HS Wrestling",
+                ShortName = "HSWrestling"
+            };
+
+            var onlineTraining = new Service
+            {
+                Id = Guid.NewGuid(),
+                Organization = wolfpack,
+                Name = "Online Training",
+                ShortName = "OnlineTraining"
+            };
+
+            var afterSchool1 = new Service
+            {
+                Id = Guid.NewGuid(),
+                Organization = theDen,
+                Name = "After School Wrestling 1 Day",
+                ShortName = "AfterSchool1Day"
+            };
+
+            var afterSchool2 = new Service
+            {
+                Id = Guid.NewGuid(),
+                Organization = theDen,
+                Name = "After School Wrestling 2 Day",
+                ShortName = "AfterSchool2Day"
+            };
+
+            db.Services.AddRange(
+                openMat,
+                seriousYouth,
+                hsWrestling,
+                onlineTraining,
+                afterSchool1,
+                afterSchool2);
+
+            var competitor = new MembershipPlan
+            {
+                Id = Guid.NewGuid(),
+                Organization = wolfpack,
+                Name = "Wolfpack Competitor",
+                ShortName = "WolfpackCompetitor",
+                MonthlyPrice = 379.00m
+            };
+
+            var elite = new MembershipPlan
+            {
+                Id = Guid.NewGuid(),
+                Organization = wolfpack,
+                Name = "Wolfpack Elite",
+                ShortName = "WolfpackElite",
+                MonthlyPrice = 479.00m
+            };
+
+            var denAfterSchool1 = new MembershipPlan
+            {
+                Id = Guid.NewGuid(),
+                Organization = theDen,
+                Name = "The Den After School 1 Day",
+                ShortName = "DenAfterSchool1Day",
+                MonthlyPrice = 149.00m
+            };
+
+            var denAfterSchool2 = new MembershipPlan
+            {
+                Id = Guid.NewGuid(),
+                Organization = theDen,
+                Name = "The Den After School 2 Day",
+                ShortName = "DenAfterSchool2Day",
+                MonthlyPrice = 249.00m
+            };
+
+            db.MembershipPlans.AddRange(
+                competitor,
+                elite,
+                denAfterSchool1,
+                denAfterSchool2);
+
+            db.PlanServices.AddRange(
+                new PlanService { MembershipPlan = competitor, Service = openMat },
+                new PlanService { MembershipPlan = competitor, Service = seriousYouth },
+                new PlanService { MembershipPlan = competitor, Service = hsWrestling },
+                new PlanService { MembershipPlan = competitor, Service = onlineTraining },
+
+                new PlanService { MembershipPlan = elite, Service = openMat },
+                new PlanService { MembershipPlan = elite, Service = seriousYouth },
+                new PlanService { MembershipPlan = elite, Service = hsWrestling },
+                new PlanService { MembershipPlan = elite, Service = onlineTraining },
+
+                new PlanService { MembershipPlan = denAfterSchool1, Service = afterSchool1 },
+                new PlanService { MembershipPlan = denAfterSchool2, Service = afterSchool2 }
+            );
+
+            await db.SaveChangesAsync();
+        }
+    }
+}
