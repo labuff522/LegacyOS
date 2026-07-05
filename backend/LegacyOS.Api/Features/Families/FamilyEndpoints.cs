@@ -14,11 +14,21 @@ public static class FamilyEndpoints
             var families = await db.Families
                 .Include(f => f.Guardians)
                 .Include(f => f.Athletes)
+                .Include(f => f.FamilyOrganizations)
+                    .ThenInclude(fo => fo.Organization)
                 .Select(f => new
                 {
                     f.Id,
                     f.FamilyName,
                     f.IsActive,
+                    Organizations = f.FamilyOrganizations.Select(fo => new
+                    {
+                        fo.Organization.Id,
+                        fo.Organization.Name,
+                        fo.Organization.ShortName,
+                        fo.IsActive,
+                        fo.JoinedOn
+                    }),
                     Guardians = f.Guardians.Select(g => new
                     {
                         g.Id,
@@ -47,12 +57,22 @@ public static class FamilyEndpoints
             var family = await db.Families
                 .Include(f => f.Guardians)
                 .Include(f => f.Athletes)
+                .Include(f => f.FamilyOrganizations)
+                    .ThenInclude(fo => fo.Organization)
                 .Where(f => f.Id == id)
                 .Select(f => new
                 {
                     f.Id,
                     f.FamilyName,
                     f.IsActive,
+                    Organizations = f.FamilyOrganizations.Select(fo => new
+                    {
+                        fo.Organization.Id,
+                        fo.Organization.Name,
+                        fo.Organization.ShortName,
+                        fo.IsActive,
+                        fo.JoinedOn
+                    }),
                     Guardians = f.Guardians.Select(g => new
                     {
                         g.Id,
