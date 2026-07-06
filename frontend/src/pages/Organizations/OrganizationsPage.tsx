@@ -3,7 +3,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 
 const organizations = [
   { name: 'Wolfpack Wrestling Club', type: 'Non-Profit', description: 'Competitive memberships, scholarships, donations, and club training.' },
-  { name: 'The Den at Legacy', type: 'Commercial', description: 'After-school programs, camps, clinics, rentals, and facility operations.' },
+  { name: 'The Den Franklin', type: 'Commercial', description: 'After-school programs, camps, clinics, rentals, and facility operations.' },
 ];
 
 export function OrganizationsPage() {

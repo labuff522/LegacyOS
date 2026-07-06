@@ -2,10 +2,10 @@ import { Card, CardContent, Grid, Typography } from '@mui/material';
 import { PageHeader } from '../../components/common/PageHeader';
 
 const cards = [
-  { label: 'Families', value: 'Ready' },
-  { label: 'Registration', value: 'Active' },
-  { label: 'Memberships', value: 'Seeded' },
-  { label: 'Database', value: 'Connected' },
+  { label: 'Families', value: '2' },
+  { label: 'Registration', value: '2' },
+  { label: 'Memberships', value: '4' },
+  { label: 'Database', value: '2' },
 ];
 
 export function DashboardPage() {

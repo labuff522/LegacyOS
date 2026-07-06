@@ -6,9 +6,9 @@ export function Header({ drawerWidth }: HeaderProps) {
   return (
     <AppBar position="fixed" elevation={0} sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, ml: { sm: `${drawerWidth}px` }, backgroundColor: 'background.paper' }}>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
-        <Typography variant="h6" color="text.primary">Admin Portal</Typography>
+        <Typography variant="h6" color="text.primary">Dashboard</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2" color="text.secondary">DenOS Pre-Alpha</Typography>
+          <Typography variant="body2" color="text.secondary">v0.3 Preview</Typography>
         </Box>
       </Toolbar>
     </AppBar>
