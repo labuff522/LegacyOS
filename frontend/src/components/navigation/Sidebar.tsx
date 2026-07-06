@@ -9,61 +9,35 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import CardMembershipIcon from "@mui/icons-material/CardMembership";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
-
 import { NavLink } from "react-router-dom";
 
-const drawerWidth = 260;
-
 const navItems = [
-  {
-    label: "Dashboard",
-    path: "/dashboard",
-    icon: <DashboardIcon />,
-  },
-  {
-    label: "Families",
-    path: "/families",
-    icon: <GroupsIcon />,
-  },
-  {
-    label: "Registrations",
-    path: "/registration",
-    icon: <PersonAddIcon />,
-  },
-  {
-    label: "Memberships",
-    path: "/memberships",
-    icon: <CardMembershipIcon />,
-  },
-  {
-    label: "Organizations",
-    path: "/organizations",
-    icon: <BusinessIcon />,
-  },
+  { label: "Dashboard", path: "/dashboard", icon: <DashboardIcon /> },
+  { label: "Families", path: "/families", icon: <GroupsIcon /> },
+  { label: "New Registration", path: "/registration", icon: <PersonAddIcon /> },
+  { label: "Memberships", path: "/memberships", icon: <CardMembershipIcon /> },
+  { label: "Organizations", path: "/organizations", icon: <BusinessIcon /> },
 ];
 
 type SidebarProps = {
-  drawerWidth?: number;
+  drawerWidth: number;
 };
 
-export function Sidebar({
-  drawerWidth: width = drawerWidth,
-}: SidebarProps) {
+export function Sidebar({ drawerWidth }: SidebarProps) {
   return (
     <Drawer
       variant="permanent"
       sx={{
-        width,
+        width: drawerWidth,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
-          width,
+          width: drawerWidth,
           boxSizing: "border-box",
           backgroundColor: "#050505",
           borderRight: "1px solid rgba(255,255,255,0.08)",
@@ -74,21 +48,12 @@ export function Sidebar({
         <Box>
           <Typography
             variant="h4"
-            sx={{
-              fontWeight: 900,
-              letterSpacing: "-0.08em",
-              color: "#fff",
-            }}
+            sx={{ fontWeight: 900, letterSpacing: "-0.08em", color: "#fff" }}
           >
             DenOS
           </Typography>
 
-          <Typography
-            variant="body2"
-            sx={{
-              color: "rgba(255,255,255,0.55)",
-            }}
-          >
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.55)" }}>
             Administration
           </Typography>
         </Box>
@@ -106,26 +71,18 @@ export function Sidebar({
               borderRadius: 2,
               mb: 0.5,
               color: "text.secondary",
-
               "&.active": {
                 backgroundColor: "rgba(255,255,255,0.08)",
                 color: "#fff",
               },
-
               "&:hover": {
                 backgroundColor: "rgba(255,255,255,0.05)",
               },
             }}
           >
-            <ListItemIcon
-              sx={{
-                color: "inherit",
-                minWidth: 40,
-              }}
-            >
+            <ListItemIcon sx={{ color: "inherit", minWidth: 40 }}>
               {item.icon}
             </ListItemIcon>
-
             <ListItemText primary={item.label} />
           </ListItemButton>
         ))}
@@ -140,7 +97,6 @@ export function Sidebar({
           sx={{
             borderRadius: 2,
             color: "text.secondary",
-
             "&:hover": {
               backgroundColor: "rgba(255,255,255,0.05)",
             },
@@ -149,7 +105,6 @@ export function Sidebar({
           <ListItemIcon sx={{ color: "inherit", minWidth: 40 }}>
             <SettingsIcon />
           </ListItemIcon>
-
           <ListItemText primary="Settings" />
         </ListItemButton>
       </List>
