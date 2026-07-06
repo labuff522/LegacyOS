@@ -30,7 +30,7 @@ public static class DatabaseInitializer
             var theDen = new Organization
             {
                 Id = Guid.NewGuid(),
-                Name = "The Den at Legacy",
+                Name = "The Den Franklin",
                 ShortName = "TheDen",
                 OrganizationType = OrganizationType.Commercial,
                 IsActive = true,

@@ -21,8 +21,8 @@ export function Sidebar({ drawerWidth }: SidebarProps) {
     <Drawer variant="permanent" sx={{ width: drawerWidth, flexShrink: 0, [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box', backgroundColor: '#050505' } }}>
       <Toolbar>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.04em' }}>LEGACYOS</Typography>
-          <Typography variant="caption" color="text.secondary">Black / Silver Admin</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.04em' }}>DenOS</Typography>
+          <Typography variant="caption" color="text.secondary"> Admin Portal </Typography>
         </Box>
       </Toolbar>
       <List sx={{ px: 1.5 }}>

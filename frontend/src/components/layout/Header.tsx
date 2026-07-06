@@ -8,7 +8,7 @@ export function Header({ drawerWidth }: HeaderProps) {
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography variant="h6" color="text.primary">Admin Portal</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2" color="text.secondary">LegacyOS Pre-Alpha</Typography>
+          <Typography variant="body2" color="text.secondary">DenOS Pre-Alpha</Typography>
         </Box>
       </Toolbar>
     </AppBar>
