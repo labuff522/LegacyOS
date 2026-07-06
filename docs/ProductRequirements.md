@@ -2034,3 +2034,126 @@ The success of LegacyOS will not be measured by the number of features it contai
 It will be measured by how effortlessly users complete the workflows that matter most.
 
 Every sprint should improve at least one workflow.
+
+---
+
+# Chapter 6 - Events and Travel
+
+## Purpose
+
+DenOS must support events that are hosted by The Den Franklin as well as external events that an organization attends.
+
+This includes:
+
+- Hosted duals
+- Hosted tournaments
+- Camps
+- Clinics
+- External individual tournaments
+- External dual tournaments
+- Organization travel events
+
+## Core Distinction
+
+Event means what is happening.
+
+Trip means how one of our organizations participates in that event.
+
+Example:
+
+Event: Super 32 Qualifier  
+Trip: Wolfpack sends 14 athletes.
+
+Example:
+
+Event: Den Winter Duals  
+Hosted by: The Den Franklin  
+Capacity: 8 teams, 3 mats, 2 sessions.
+
+## Event Types
+
+- Hosted Event
+- External Tournament
+- External Dual
+- Camp
+- Clinic
+- Private Event
+- Facility Rental
+
+## Trip Responsibilities
+
+A Trip may track:
+
+- Athletes attending
+- Coaches attending
+- Parent approvals
+- Weight classes
+- Team rosters
+- Registration status
+- Payment status
+- Required waivers
+- USA Wrestling card status
+- Lodging
+- Transportation
+- Notes
+
+## Hosted Event Responsibilities
+
+A Hosted Event may track:
+
+- Facility
+- Rooms or mats
+- Time blocks
+- Capacity
+- Team limits
+- Athlete limits
+- Coach assignments
+- Officials
+- Staff
+- Payments
+- Registration windows
+- Check-in
+
+## Business Rules
+
+### EVT-001
+
+Events may be hosted by The Den Franklin or may be external.
+
+### EVT-002
+
+Trips are organization-specific.
+
+### EVT-003
+
+Hosted events must respect facility, room, mat, coach, and capacity constraints.
+
+### EVT-004
+
+External duals may require team rosters by weight class.
+
+### EVT-005
+
+External individual tournaments may allow open athlete registration.
+
+### EVT-006
+
+Parents should not have to re-enter information DenOS already has.
+
+### EVT-007
+
+Event registration should reuse existing athlete, guardian, waiver, payment, and eligibility data.
+
+## Future Workflow
+
+DenOS should eventually support:
+
+- Create Hosted Event
+- Create External Event
+- Create Team Trip
+- Add Athletes to Event
+- Build Dual Team Roster
+- Track Tournament Registration
+- Collect Event Fees
+- Confirm Required Documents
+- Check Event Capacity
