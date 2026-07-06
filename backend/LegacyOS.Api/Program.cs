@@ -9,9 +9,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173", "http://localhost:5174")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddDbContext<LegacyOSDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("LegacyOS")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("LegacyOS")));
 
 builder.Services.AddScoped<FamilyRegistrationService>();
 
@@ -25,6 +35,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("LocalFrontend");
 
 app.MapGet("/health", async (LegacyOSDbContext db) =>
 {
