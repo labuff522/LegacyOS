@@ -5,4 +5,5 @@ export interface WorkflowStep {
   title: string;
   subtitle?: string;
   component: ReactNode;
+  canContinue?: () => boolean;
 }

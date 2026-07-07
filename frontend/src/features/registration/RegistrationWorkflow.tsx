@@ -10,7 +10,6 @@ import { AthletesStep } from "./steps/AthletesStep";
 import { ChooseRegistrationStep } from "./steps/ChooseRegistrationStep";
 import { FamilyInformationStep } from "./steps/FamilyInformationStep";
 import { GuardianStep } from "./steps/GuardianStep";
-import { OrganizationStep } from "./steps/OrganizationStep";
 import { ProgramStep } from "./steps/ProgramStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import type { RegistrationFormData } from "./types";
@@ -35,15 +34,20 @@ export function RegistrationWorkflow() {
 
     try {
       const response = await registerFamily({
-        familyName: data.familyName,
+        familyName: data.familyName.trim(),
         organizationShortName: data.organizationShortName,
         guardian: {
-          firstName: data.guardianFirstName,
-          lastName: data.guardianLastName,
-          email: data.guardianEmail,
-          phone: data.guardianPhone,
+          firstName: data.guardianFirstName.trim(),
+          lastName: data.guardianLastName.trim(),
+          email: data.guardianEmail.trim(),
+          phone: data.guardianPhone.trim(),
         },
-        athletes: data.athletes,
+        athletes: data.athletes.map((athlete) => ({
+          firstName: athlete.firstName.trim(),
+          lastName: athlete.lastName.trim(),
+          dateOfBirth: athlete.dateOfBirth,
+          gender: athlete.gender,
+        })),
       });
 
       navigate(`/families/${response.familyId}`);
@@ -56,6 +60,13 @@ export function RegistrationWorkflow() {
     }
   };
 
+  const hasValidAthlete = data.athletes.some(
+    (athlete) =>
+      athlete.firstName.trim() &&
+      athlete.lastName.trim() &&
+      athlete.dateOfBirth
+  );
+
   const steps: WorkflowStep[] = useMemo(
     () => [
       {
@@ -66,6 +77,7 @@ export function RegistrationWorkflow() {
         component: (
           <ChooseRegistrationStep data={data} updateData={updateData} />
         ),
+        canContinue: () => !!data.registrationType,
       },
       {
         id: "family-information",
@@ -74,39 +86,44 @@ export function RegistrationWorkflow() {
         component: (
           <FamilyInformationStep data={data} updateData={updateData} />
         ),
+        canContinue: () =>
+          data.registrationType === "existing-family" ||
+          !!data.familyName.trim(),
       },
       {
         id: "guardian",
         title: "Guardian",
         subtitle: "Add the primary guardian or billing contact.",
         component: <GuardianStep data={data} updateData={updateData} />,
+        canContinue: () =>
+          !!data.guardianFirstName.trim() &&
+          !!data.guardianLastName.trim() &&
+          !!data.guardianEmail.trim() &&
+          !!data.guardianPhone.trim(),
       },
       {
         id: "athletes",
         title: "Athletes",
         subtitle: "Add one or more athletes.",
         component: <AthletesStep data={data} updateData={updateData} />,
-      },
-      {
-        id: "organization",
-        title: "Organization",
-        subtitle: "Choose where this registration belongs.",
-        component: <OrganizationStep data={data} updateData={updateData} />,
+        canContinue: () => hasValidAthlete,
       },
       {
         id: "program",
         title: "Program",
         subtitle: "Choose the program for this registration.",
         component: <ProgramStep data={data} updateData={updateData} />,
+        canContinue: () => !!data.membershipPlanShortName,
       },
       {
         id: "review",
         title: "Review",
         subtitle: "Confirm everything before creating the registration.",
         component: <ReviewStep data={data} />,
+        canContinue: () => !submitting,
       },
     ],
-    [data]
+    [data, hasValidAthlete, submitting]
   );
 
   const workflow = useWorkflow(steps, {

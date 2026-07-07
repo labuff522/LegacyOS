@@ -4,6 +4,8 @@ using LegacyOS.Api.Features.Memberships;
 using LegacyOS.Api.Features.Registration;
 using LegacyOS.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using LegacyOS.Api.Features.Products;
+using LegacyOS.Api.Features.Activities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,5 +67,7 @@ app.MapGet("/health", async (LegacyOSDbContext db) =>
 app.MapFamilyEndpoints();
 app.MapRegistrationEndpoints();
 app.MapMembershipEndpoints();
+app.MapProductEndpoints();
+app.MapActivityEndpoints();
 
 app.Run();

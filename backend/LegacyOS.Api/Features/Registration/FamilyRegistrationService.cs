@@ -3,6 +3,7 @@ using LegacyOS.Api.Features.Families;
 using LegacyOS.Api.Features.Organizations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using LegacyOS.Api.Features.Activities;
 
 namespace LegacyOS.Api.Features.Registration;
 
@@ -77,6 +78,19 @@ public class FamilyRegistrationService
         _db.Guardians.Add(guardian);
         _db.Athletes.AddRange(athletes);
         _db.FamilyOrganizations.Add(familyOrganization);
+
+        var activity = new Activity
+{
+        Id = Guid.NewGuid(),
+        FamilyId = family.Id,
+        Family = family,
+        ActivityType = ActivityType.FamilyRegistered,
+        Title = "Family registered",
+        Description = $"{family.FamilyName} was registered in DenOS.",
+        CreatedOn = DateTime.UtcNow
+        };
+
+        _db.Activities.Add(activity);
 
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
