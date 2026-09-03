@@ -4,6 +4,7 @@ using LegacyOS.Api.Features.Organizations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using LegacyOS.Api.Features.Activities;
+using LegacyOS.Api.Features.Enrollments;
 
 namespace LegacyOS.Api.Features.Registration;
 
@@ -26,6 +27,18 @@ public class FamilyRegistrationService
         {
             throw new InvalidOperationException(
                 $"Organization '{request.OrganizationShortName}' was not found.");
+        }
+
+        var membershipPlan = await _db.MembershipPlans
+            .FirstOrDefaultAsync(x =>
+                x.OrganizationId == organization.Id &&
+                x.ShortName == request.MembershipPlanShortName &&
+                x.IsActive);
+
+        if (membershipPlan is null)
+        {
+            throw new InvalidOperationException(
+                $"Active membership plan '{request.MembershipPlanShortName}' was not found for organization '{request.OrganizationShortName}'.");
         }
 
         await using IDbContextTransaction transaction =
@@ -78,6 +91,20 @@ public class FamilyRegistrationService
         _db.Guardians.Add(guardian);
         _db.Athletes.AddRange(athletes);
         _db.FamilyOrganizations.Add(familyOrganization);
+
+        var enrollments = athletes.Select(athlete => new Enrollment
+        {
+            Id = Guid.NewGuid(),
+            AthleteId = athlete.Id,
+            Athlete = athlete,
+            MembershipPlanId = membershipPlan.Id,
+            MembershipPlan = membershipPlan,
+            StartDate = DateTime.UtcNow,
+            IsActive = true,
+            CreatedOn = DateTime.UtcNow
+        }).ToList();
+
+        _db.Enrollments.AddRange(enrollments);
 
         var activity = new Activity
 {

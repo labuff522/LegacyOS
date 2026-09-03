@@ -36,6 +36,7 @@ export function RegistrationWorkflow() {
       const response = await registerFamily({
         familyName: data.familyName.trim(),
         organizationShortName: data.organizationShortName,
+        membershipPlanShortName: data.membershipPlanShortName,
         guardian: {
           firstName: data.guardianFirstName.trim(),
           lastName: data.guardianLastName.trim(),

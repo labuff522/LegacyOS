@@ -1,8 +1,9 @@
-const API_BASE = "http://localhost:5021";
+import { http } from "./http";
 
 export type RegisterFamilyRequest = {
   familyName: string;
   organizationShortName: string;
+  membershipPlanShortName: string;
   guardian: {
     firstName: string;
     lastName: string;
@@ -27,17 +28,10 @@ export type RegisterFamilyResponse = {
 export async function registerFamily(
   request: RegisterFamilyRequest
 ): Promise<RegisterFamilyResponse> {
-  const response = await fetch(`${API_BASE}/registration/family`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
+  const response = await http.post<RegisterFamilyResponse>(
+    "/registration/family",
+    request
+  );
 
-  if (!response.ok) {
-    throw new Error("Registration failed.");
-  }
-
-  return response.json();
+  return response.data;
 }

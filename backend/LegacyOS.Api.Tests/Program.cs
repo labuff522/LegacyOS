@@ -49,6 +49,15 @@ foreach (var endpoint in new[]
     Check(Source(Path.Combine("backend/LegacyOS.Api", endpoint)).Contains("RequireAuthorization(\"StaffOnly\")"),
         $"{endpoint} is staff-only");
 
+var registrationClientSource = Source("frontend/src/api/registration.ts");
+Check(registrationClientSource.Contains("http.post<RegisterFamilyResponse>") &&
+      registrationClientSource.Contains("membershipPlanShortName"),
+    "admin registration uses the authenticated client and submits the selected program");
+var registrationServiceSource = Source("backend/LegacyOS.Api/Features/Registration/FamilyRegistrationService.cs");
+Check(registrationServiceSource.Contains("x.OrganizationId == organization.Id") &&
+      registrationServiceSource.Contains("_db.Enrollments.AddRange(enrollments)"),
+    "admin registration enrolls athletes only in the selected organization's active plan");
+
 var portalSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
 Check(portalSource.Contains("MapGroup(\"/portal\").RequireAuthorization(\"CustomerOnly\")"),
     "customer portal requires the customer policy");

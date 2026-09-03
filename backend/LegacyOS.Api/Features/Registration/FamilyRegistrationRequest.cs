@@ -6,6 +6,8 @@ public class FamilyRegistrationRequest
 
     public string OrganizationShortName { get; set; } = "";
 
+    public string MembershipPlanShortName { get; set; } = "";
+
     public GuardianRequest Guardian { get; set; } = new();
 
     public List<AthleteRequest> Athletes { get; set; } = new();
