@@ -19,12 +19,14 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EventIcon from "@mui/icons-material/Event";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { NavLink } from "react-router-dom";
 
 const primaryItems = [
   { label: "Dashboard", path: "/dashboard", icon: <DashboardIcon /> },
   { label: "Families", path: "/families", icon: <GroupsIcon /> },
   { label: "New Registration", path: "/registration", icon: <PersonAddIcon /> },
+  { label: "USA Wrestling", path: "/usa-wrestling-verifications", icon: <VerifiedUserIcon /> },
 ];
 
 const catalogItems = [

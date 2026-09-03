@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/backend/">
+    <Project Path="backend/LegacyOS.Api.Tests/LegacyOS.Api.Tests.csproj" />
     <Project Path="backend/LegacyOS.Api/LegacyOS.Api.csproj" />
   </Folder>
 </Solution>

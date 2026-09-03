@@ -4,7 +4,7 @@ public static class RegistrationEndpoints
 {
     public static RouteGroupBuilder MapRegistrationEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/registration");
+        var group = app.MapGroup("/registration").RequireAuthorization("StaffOnly");
 
         group.MapPost("/family", async (
             FamilyRegistrationRequest request,

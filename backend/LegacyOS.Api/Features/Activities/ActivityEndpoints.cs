@@ -7,7 +7,7 @@ public static class ActivityEndpoints
 {
     public static RouteGroupBuilder MapActivityEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/activities");
+        var group = app.MapGroup("/activities").RequireAuthorization("StaffOnly");
 
         group.MapGet("/family/{familyId:guid}", async (Guid familyId, LegacyOSDbContext db) =>
         {

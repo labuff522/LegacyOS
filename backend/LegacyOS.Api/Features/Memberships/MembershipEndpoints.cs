@@ -7,7 +7,7 @@ public static class MembershipEndpoints
 {
     public static RouteGroupBuilder MapMembershipEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/membership-plans");
+        var group = app.MapGroup("/membership-plans").RequireAuthorization("StaffOnly");
 
         group.MapGet("/", async (LegacyOSDbContext db) =>
         {

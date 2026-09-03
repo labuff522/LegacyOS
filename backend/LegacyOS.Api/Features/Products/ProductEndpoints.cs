@@ -7,7 +7,7 @@ public static class ProductEndpoints
 {
     public static RouteGroupBuilder MapProductEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/products");
+        var group = app.MapGroup("/products").RequireAuthorization("StaffOnly");
 
         group.MapGet("/", async (LegacyOSDbContext db) =>
         {

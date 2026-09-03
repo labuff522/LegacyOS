@@ -3,6 +3,7 @@ using System;
 using LegacyOS.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LegacyOS.Api.Migrations
 {
     [DbContext(typeof(LegacyOSDbContext))]
-    partial class LegacyOSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902190802_AddPortalAuthentication")]
+    partial class AddPortalAuthentication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -561,160 +564,6 @@ namespace LegacyOS.Api.Migrations
                     b.ToTable("products", (string)null);
                 });
 
-            modelBuilder.Entity("LegacyOS.Api.Features.Purchases.PurchaseOrder", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("purchase_order_id");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("amount");
-
-                    b.Property<Guid?>("AthleteId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("athlete_id");
-
-                    b.Property<DateTime?>("CompletedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_on");
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasColumnName("currency");
-
-                    b.Property<Guid?>("EnrollmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("enrollment_id");
-
-                    b.Property<Guid>("FamilyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("family_id");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("character varying(25)")
-                        .HasColumnName("kind");
-
-                    b.Property<Guid?>("MembershipPlanId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("membership_plan_id");
-
-                    b.Property<Guid>("PortalUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("portal_user_id");
-
-                    b.Property<Guid?>("ProductId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("product_id");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("character varying(25)")
-                        .HasColumnName("status");
-
-                    b.Property<string>("StripeCheckoutSessionId")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("stripe_checkout_session_id");
-
-                    b.Property<string>("StripeCustomerId")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("stripe_customer_id");
-
-                    b.Property<string>("StripeSubscriptionId")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("stripe_subscription_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AthleteId");
-
-                    b.HasIndex("EnrollmentId");
-
-                    b.HasIndex("FamilyId");
-
-                    b.HasIndex("MembershipPlanId");
-
-                    b.HasIndex("PortalUserId");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("StripeCheckoutSessionId")
-                        .IsUnique();
-
-                    b.ToTable("purchase_orders", (string)null);
-                });
-
-            modelBuilder.Entity("LegacyOS.Api.Features.UsaWrestling.UsaWrestlingVerification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("usa_wrestling_verification_id");
-
-                    b.Property<Guid>("AthleteId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("athlete_id");
-
-                    b.Property<DateOnly?>("ExpiresOn")
-                        .HasColumnType("date")
-                        .HasColumnName("expires_on");
-
-                    b.Property<string>("MembershipNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("membership_number");
-
-                    b.Property<string>("StaffNotes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("staff_notes");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("status");
-
-                    b.Property<DateTime>("SubmittedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("submitted_on");
-
-                    b.Property<Guid?>("VerifiedByPortalUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("verified_by_portal_user_id");
-
-                    b.Property<DateTime?>("VerifiedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("verified_on");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AthleteId")
-                        .IsUnique();
-
-                    b.HasIndex("MembershipNumber")
-                        .IsUnique();
-
-                    b.HasIndex("VerifiedByPortalUserId");
-
-                    b.ToTable("usa_wrestling_verifications", (string)null);
-                });
-
             modelBuilder.Entity("LegacyOS.Api.Features.Activities.Activity", b =>
                 {
                     b.HasOne("LegacyOS.Api.Features.Families.Family", "Family")
@@ -857,69 +706,6 @@ namespace LegacyOS.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Guardian");
-                });
-
-            modelBuilder.Entity("LegacyOS.Api.Features.Purchases.PurchaseOrder", b =>
-                {
-                    b.HasOne("LegacyOS.Api.Features.Families.Athlete", "Athlete")
-                        .WithMany()
-                        .HasForeignKey("AthleteId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("LegacyOS.Api.Features.Enrollments.Enrollment", "Enrollment")
-                        .WithMany()
-                        .HasForeignKey("EnrollmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("LegacyOS.Api.Features.Families.Family", "Family")
-                        .WithMany()
-                        .HasForeignKey("FamilyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LegacyOS.Api.Features.Memberships.MembershipPlan", "MembershipPlan")
-                        .WithMany()
-                        .HasForeignKey("MembershipPlanId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("LegacyOS.Api.Features.Portal.PortalUser", null)
-                        .WithMany()
-                        .HasForeignKey("PortalUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LegacyOS.Api.Features.Products.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Athlete");
-
-                    b.Navigation("Enrollment");
-
-                    b.Navigation("Family");
-
-                    b.Navigation("MembershipPlan");
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("LegacyOS.Api.Features.UsaWrestling.UsaWrestlingVerification", b =>
-                {
-                    b.HasOne("LegacyOS.Api.Features.Families.Athlete", "Athlete")
-                        .WithOne()
-                        .HasForeignKey("LegacyOS.Api.Features.UsaWrestling.UsaWrestlingVerification", "AthleteId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("LegacyOS.Api.Features.Portal.PortalUser", "VerifiedByPortalUser")
-                        .WithMany()
-                        .HasForeignKey("VerifiedByPortalUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Athlete");
-
-                    b.Navigation("VerifiedByPortalUser");
                 });
 
             modelBuilder.Entity("LegacyOS.Api.Features.Families.Family", b =>

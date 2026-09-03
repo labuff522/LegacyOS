@@ -5,17 +5,40 @@ import { FamilyDetailPage } from './pages/Families/FamilyDetailPage';
 import { MembershipsPage } from './pages/Memberships/MembershipsPage';
 import { OrganizationsPage } from './pages/Organizations/OrganizationsPage';
 import { RegistrationPage } from './pages/Registration/RegistrationPage';
+import { AuthPage } from './pages/Portal/AuthPage';
+import { PortalHomePage } from './pages/Portal/PortalHomePage';
+import { PurchaseSuccessPage } from './pages/Portal/PurchaseSuccessPage';
+import { useAuth } from './features/auth/AuthContext';
+import { AdminLayout } from './components/layout/AdminLayout';
+import type { ReactNode } from 'react';
+import { UsaWrestlingVerificationsPage } from './pages/UsaWrestling/UsaWrestlingVerificationsPage';
+
+function RequireRole({ role, children }: { role: 'Customer' | 'Staff'; children: ReactNode }) {
+  const { session } = useAuth();
+  if (!session) return <Navigate to="/portal/login" replace />;
+  if (session.role !== role) return <Navigate to={session.role === 'Customer' ? '/portal' : '/dashboard'} replace />;
+  return children;
+}
+
+function StaffPage({ children }: { children: ReactNode }) {
+  return <RequireRole role="Staff"><AdminLayout>{children}</AdminLayout></RequireRole>;
+}
 
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/families" element={<FamiliesPage />} />
-      <Route path="/families/:familyId" element={<FamilyDetailPage />} />
-      <Route path="/registration" element={<RegistrationPage />} />
-      <Route path="/memberships" element={<MembershipsPage />} />
-      <Route path="/organizations" element={<OrganizationsPage />} />
+      <Route path="/" element={<Navigate to="/portal" replace />} />
+      <Route path="/portal/login" element={<AuthPage mode="login" />} />
+      <Route path="/portal/register" element={<AuthPage mode="register" />} />
+      <Route path="/portal" element={<RequireRole role="Customer"><PortalHomePage /></RequireRole>} />
+      <Route path="/portal/purchase/success" element={<RequireRole role="Customer"><PurchaseSuccessPage /></RequireRole>} />
+      <Route path="/dashboard" element={<StaffPage><DashboardPage /></StaffPage>} />
+      <Route path="/families" element={<StaffPage><FamiliesPage /></StaffPage>} />
+      <Route path="/families/:familyId" element={<StaffPage><FamilyDetailPage /></StaffPage>} />
+      <Route path="/registration" element={<StaffPage><RegistrationPage /></StaffPage>} />
+      <Route path="/memberships" element={<StaffPage><MembershipsPage /></StaffPage>} />
+      <Route path="/organizations" element={<StaffPage><OrganizationsPage /></StaffPage>} />
+      <Route path="/usa-wrestling-verifications" element={<StaffPage><UsaWrestlingVerificationsPage /></StaffPage>} />
     </Routes>
   );
 }

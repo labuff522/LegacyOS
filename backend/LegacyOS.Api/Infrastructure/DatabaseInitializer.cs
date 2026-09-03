@@ -2,6 +2,8 @@ using LegacyOS.Api.Data;
 using LegacyOS.Api.Features.Memberships;
 using LegacyOS.Api.Features.Organizations;
 using Microsoft.EntityFrameworkCore;
+using LegacyOS.Api.Features.Portal;
+using Microsoft.AspNetCore.Identity;
 
 namespace LegacyOS.Api.Infrastructure;
 
@@ -14,6 +16,8 @@ public static class DatabaseInitializer
         var db = scope.ServiceProvider.GetRequiredService<LegacyOSDbContext>();
 
         await db.Database.MigrateAsync();
+
+        await EnsureBootstrapStaffAsync(scope.ServiceProvider, db);
 
         if (!await db.Organizations.AnyAsync())
         {
@@ -154,5 +158,29 @@ public static class DatabaseInitializer
 
             await db.SaveChangesAsync();
         }
+    }
+
+    private static async Task EnsureBootstrapStaffAsync(IServiceProvider services, LegacyOSDbContext db)
+    {
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var email = configuration["BootstrapStaff:Email"];
+        var password = configuration["BootstrapStaff:Password"];
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password)) return;
+
+        var normalizedEmail = TokenUtilities.NormalizeEmail(email);
+        if (await db.PortalUsers.AnyAsync(x => x.NormalizedEmail == normalizedEmail)) return;
+
+        if (password.Length < 12)
+            throw new InvalidOperationException("BootstrapStaff:Password must be at least 12 characters.");
+
+        var user = new PortalUser
+        {
+            Id = Guid.NewGuid(), Email = email.Trim(), NormalizedEmail = normalizedEmail,
+            Role = PortalRoles.Staff, CreatedOn = DateTime.UtcNow
+        };
+        var passwordHasher = services.GetRequiredService<IPasswordHasher<PortalUser>>();
+        user.PasswordHash = passwordHasher.HashPassword(user, password);
+        db.PortalUsers.Add(user);
+        await db.SaveChangesAsync();
     }
 }

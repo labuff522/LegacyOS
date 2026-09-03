@@ -5,6 +5,9 @@ using LegacyOS.Api.Features.Organizations;
 using Microsoft.EntityFrameworkCore;
 using LegacyOS.Api.Features.Products;
 using LegacyOS.Api.Features.Activities;
+using LegacyOS.Api.Features.Portal;
+using LegacyOS.Api.Features.Purchases;
+using LegacyOS.Api.Features.UsaWrestling;
 
 namespace LegacyOS.Api.Data;
 
@@ -31,6 +34,12 @@ public class LegacyOSDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
 
     public DbSet<Activity> Activities => Set<Activity>();
+
+    public DbSet<PortalUser> PortalUsers => Set<PortalUser>();
+    public DbSet<PortalAccessToken> PortalAccessTokens => Set<PortalAccessToken>();
+    public DbSet<GuardianInvitation> GuardianInvitations => Set<GuardianInvitation>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<UsaWrestlingVerification> UsaWrestlingVerifications => Set<UsaWrestlingVerification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

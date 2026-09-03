@@ -1,10 +1,6 @@
 import { AppRoutes } from './routes';
-import { AdminLayout } from './components/layout/AdminLayout';
+import { AuthProvider } from './features/auth/AuthContext';
 
 export default function App() {
-  return (
-    <AdminLayout>
-      <AppRoutes />
-    </AdminLayout>
-  );
+  return <AuthProvider><AppRoutes /></AuthProvider>;
 }
