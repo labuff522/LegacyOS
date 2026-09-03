@@ -4,6 +4,7 @@ using LegacyOS.Api.Features.Organizations;
 using Microsoft.EntityFrameworkCore;
 using LegacyOS.Api.Features.Portal;
 using Microsoft.AspNetCore.Identity;
+using System.Text.Json;
 
 namespace LegacyOS.Api.Infrastructure;
 
@@ -16,6 +17,8 @@ public static class DatabaseInitializer
         var db = scope.ServiceProvider.GetRequiredService<LegacyOSDbContext>();
 
         await db.Database.MigrateAsync();
+
+        await BackfillOrderSnapshotsAsync(db);
 
         await EnsureBootstrapStaffAsync(scope.ServiceProvider, db);
 
@@ -158,6 +161,30 @@ public static class DatabaseInitializer
 
             await db.SaveChangesAsync();
         }
+    }
+
+    private static async Task BackfillOrderSnapshotsAsync(LegacyOSDbContext db)
+    {
+        var orders = await db.PurchaseOrders.Include(x => x.Family).ThenInclude(x => x.Guardians)
+            .Include(x => x.Family).ThenInclude(x => x.Athletes).Include(x => x.Athlete)
+            .Include(x => x.Product).Include(x => x.MembershipPlan)
+            .Where(x => x.FamilySnapshotJson == "{}" || x.ItemSnapshotJson == "{}").ToListAsync();
+        foreach (var order in orders)
+        {
+            order.FamilySnapshotJson = JsonSerializer.Serialize(new { order.Family.Id, order.Family.FamilyName,
+                guardians = order.Family.Guardians.Select(g => new { g.Id, g.FirstName, g.LastName, g.Email, g.Phone }),
+                athletes = order.Family.Athletes.Select(a => new { a.Id, a.FirstName, a.LastName, a.DateOfBirth, a.Gender }) });
+            if (order.Athlete is not null) order.AthleteSnapshotJson = JsonSerializer.Serialize(new
+                { order.Athlete.Id, order.Athlete.FirstName, order.Athlete.LastName, order.Athlete.DateOfBirth, order.Athlete.Gender });
+            order.ItemSnapshotJson = order.Product is not null
+                ? JsonSerializer.Serialize(new { order.Product.Id, order.Product.Name, order.Product.ShortName, order.Product.Description,
+                    order.Product.ProductType, order.Product.Price, order.Product.IsSessionPackage, order.Product.HasUnlimitedSessions,
+                    order.Product.SessionCount, order.Product.ValidityDays })
+                : JsonSerializer.Serialize(new { order.MembershipPlan!.Id, order.MembershipPlan.Name,
+                    order.MembershipPlan.ShortName, order.MembershipPlan.MonthlyPrice });
+            order.OriginalAmount = order.Amount + order.DiscountAmount;
+        }
+        if (orders.Count > 0) await db.SaveChangesAsync();
     }
 
     private static async Task EnsureBootstrapStaffAsync(IServiceProvider services, LegacyOSDbContext db)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, CardContent, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Card, CardContent, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
+import { http } from '../../api/http';
 import { PageHeader } from '../../components/common/PageHeader';
 import { createProduct, getProducts, updateProduct, type Product, type ProductInput } from '../../api/products';
 
@@ -18,6 +19,7 @@ export function ProductsPage() {
     <Stack spacing={2} sx={{ mt: 3 }}>{products.map(p => <Card key={p.id}><CardContent sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
       <div><Typography variant="h6">{p.name}</Typography><Typography color="text.secondary">${p.price.toFixed(2)} · {p.isSessionPackage ? `${p.hasUnlimitedSessions ? 'Unlimited sessions' : `${p.sessionCount} sessions`} · valid ${p.validityDays} days` : p.productType} · {p.isActive ? 'Active' : 'Inactive'}</Typography><Typography>{p.description}</Typography></div>
       <Button onClick={() => open(p)}>Manage</Button></CardContent></Card>)}</Stack>
+    <DiscountManager products={products}/>
     <Dialog open={editing !== undefined} onClose={() => setEditing(undefined)} fullWidth><DialogTitle>{editing ? 'Manage product' : 'Create product'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}>
       <TextField required label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/>
       <TextField required label="Short name" value={form.shortName} onChange={e => setForm({ ...form, shortName: e.target.value })}/>
@@ -29,4 +31,15 @@ export function ProductsPage() {
       <FormControlLabel control={<Checkbox checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })}/>} label="Available for purchase" />
     </Stack></DialogContent><DialogActions><Button onClick={() => setEditing(undefined)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></DialogActions></Dialog>
   </>;
+}
+
+type Discount = { id: string; code: string; description?: string; discountType: string; value: number; productId?: string; productName?: string; redemptionCount: number; maxRedemptions?: number; isActive: boolean };
+function DiscountManager({ products }: { products: Product[] }) {
+  const [items, setItems] = useState<Discount[]>([]); const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ code: '', description: '', discountType: 1, value: 10, productId: '', maxRedemptions: '', isActive: true });
+  async function load() { setItems((await http.get<Discount[]>('/discount-codes')).data); }
+  useEffect(() => { http.get<Discount[]>('/discount-codes').then(r => setItems(r.data)); }, []);
+  async function save() { await http.post('/discount-codes', { ...form, productId: form.productId || null, maxRedemptions: form.maxRedemptions ? Number(form.maxRedemptions) : null }); setOpen(false); await load(); }
+  return <Card sx={{ mt: 4 }}><CardContent><Stack direction="row" sx={{ justifyContent: 'space-between', mb: 2 }}><div><Typography variant="h5">Discount codes</Typography><Typography color="text.secondary">Codes may apply to every product or one selected product.</Typography></div><Button variant="contained" onClick={() => setOpen(true)}>Create code</Button></Stack><Stack spacing={1}>{items.map(x => <Typography key={x.id}><b>{x.code}</b> · {x.discountType === 'Percentage' ? `${x.value}%` : `$${x.value}`} · {x.productName ?? 'All products'} · {x.redemptionCount}{x.maxRedemptions ? `/${x.maxRedemptions}` : ''} used · {x.isActive ? 'Active' : 'Inactive'}</Typography>)}</Stack></CardContent>
+    <Dialog open={open} onClose={() => setOpen(false)} fullWidth><DialogTitle>Create discount code</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><TextField required label="Code" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}/><TextField label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}/><FormControl><InputLabel>Type</InputLabel><Select label="Type" value={form.discountType} onChange={e => setForm({ ...form, discountType: Number(e.target.value) })}><MenuItem value={1}>Percentage</MenuItem><MenuItem value={2}>Fixed amount</MenuItem></Select></FormControl><TextField type="number" label="Value" value={form.value} onChange={e => setForm({ ...form, value: Number(e.target.value) })}/><FormControl><InputLabel>Product</InputLabel><Select label="Product" value={form.productId} onChange={e => setForm({ ...form, productId: e.target.value })}><MenuItem value="">All products</MenuItem>{products.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}</Select></FormControl><TextField type="number" label="Maximum redemptions (optional)" value={form.maxRedemptions} onChange={e => setForm({ ...form, maxRedemptions: e.target.value })}/></Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Cancel</Button><Button variant="contained" disabled={!form.code.trim()} onClick={save}>Create</Button></DialogActions></Dialog></Card>;
 }

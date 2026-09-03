@@ -9,6 +9,8 @@ using LegacyOS.Api.Features.Portal;
 using LegacyOS.Api.Features.Purchases;
 using LegacyOS.Api.Features.UsaWrestling;
 using LegacyOS.Api.Features.Sessions;
+using LegacyOS.Api.Features.Waivers;
+using LegacyOS.Api.Features.Discounts;
 
 namespace LegacyOS.Api.Data;
 
@@ -43,6 +45,9 @@ public class LegacyOSDbContext : DbContext
     public DbSet<UsaWrestlingVerification> UsaWrestlingVerifications => Set<UsaWrestlingVerification>();
     public DbSet<SessionCreditLot> SessionCreditLots => Set<SessionCreditLot>();
     public DbSet<SessionLedgerEntry> SessionLedgerEntries => Set<SessionLedgerEntry>();
+    public DbSet<WaiverTemplate> WaiverTemplates => Set<WaiverTemplate>();
+    public DbSet<WaiverSignature> WaiverSignatures => Set<WaiverSignature>();
+    public DbSet<DiscountCode> DiscountCodes => Set<DiscountCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

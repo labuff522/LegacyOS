@@ -2,6 +2,7 @@ using LegacyOS.Api.Features.Enrollments;
 using LegacyOS.Api.Features.Families;
 using LegacyOS.Api.Features.Memberships;
 using LegacyOS.Api.Features.Products;
+using LegacyOS.Api.Features.Discounts;
 
 namespace LegacyOS.Api.Features.Purchases;
 
@@ -22,12 +23,21 @@ public class PurchaseOrder
     public PurchaseKind Kind { get; set; }
     public PurchaseStatus Status { get; set; } = PurchaseStatus.Pending;
     public decimal Amount { get; set; }
+    public decimal OriginalAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public Guid? DiscountCodeId { get; set; }
+    public DiscountCode? DiscountCode { get; set; }
+    public string? DiscountCodeSnapshot { get; set; }
+    public string FamilySnapshotJson { get; set; } = "{}";
+    public string? AthleteSnapshotJson { get; set; }
+    public string ItemSnapshotJson { get; set; } = "{}";
     public string Currency { get; set; } = "usd";
     public string? StripeCheckoutSessionId { get; set; }
     public string? StripeCustomerId { get; set; }
     public string? StripeSubscriptionId { get; set; }
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedOn { get; set; }
+    public bool DiscountRedemptionRecorded { get; set; }
 }
 
 public enum PurchaseKind { MembershipPlan = 1, Product = 2 }

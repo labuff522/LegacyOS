@@ -86,6 +86,23 @@ Check(sessionsSource.Contains("OrderBy(x => x.ExpiresOn)") && sessionsSource.Con
 Check(sessionsSource.Contains("PaidOutsideStripe") && sessionsSource.Contains("Complimentary") &&
       sessionsSource.Contains("GrantedByStaffPortalUserId = staffId"),
     "staff can assign an existing athlete a non-Stripe package with an audited source");
+Check(sessionsSource.Contains("missingWaivers > 0") && sessionsSource.Contains("OverrideReason") &&
+      sessionsSource.Contains("ELIGIBILITY OVERRIDE"),
+    "unsigned required waivers block check-in unless staff supplies an audited override reason");
+var waiverSource = Source("backend/LegacyOS.Api/Features/Waivers/WaiverEndpoints.cs");
+Check(waiverSource.Contains("RequireAuthorization(\"StaffOnly\")") && waiverSource.Contains("RequireAuthorization(\"CustomerOnly\")"),
+    "waiver administration is staff-only and guardian signing requires customer authentication");
+Check(waiverSource.Contains("SHA256.HashData(bytes)") && waiverSource.Contains("WaiverSha256 = waiver.Sha256"),
+    "waiver signatures preserve the fingerprint of the exact uploaded version");
+Check(waiverSource.Contains("x.Id == request.AthleteId && x.FamilyId == guardian.FamilyId"),
+    "guardian can sign only for an athlete in their authenticated family");
+Check(waiverSource.Contains("ExpiresOn = signedOn.AddDays(365)") && waiverSource.Contains("x.ExpiresOn > DateTime.UtcNow"),
+    "each athlete waiver signature expires 365 days after signing and can be renewed");
+Check(purchaseSource.Contains("FamilySnapshotJson = JsonSerializer.Serialize") &&
+      purchaseSource.Contains("AthleteSnapshotJson") && purchaseSource.Contains("ItemSnapshotJson"),
+    "orders retain immutable family, athlete, and item snapshots");
+Check(purchaseSource.Contains("DiscountCodeSnapshot") && purchaseSource.Contains("DiscountRedemptionRecorded"),
+    "orders preserve applied discounts and count completed redemptions once");
 var selfRegistrationSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
 Check(selfRegistrationSource.Contains("MapPost(\"/self-register\"") &&
       selfRegistrationSource.Contains("new Family") && selfRegistrationSource.Contains("new PortalUser"),

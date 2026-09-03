@@ -25,6 +25,8 @@ export type FamilyListItem = {
     lastName: string;
     dateOfBirth: string;
     gender?: string;
+    sessionPackages?: { id: string; productName: string; isUnlimited: boolean; sessionsRemaining?: number; expiresOn: string }[];
+    missingRequiredWaivers?: number;
   }[];
 };
 
@@ -39,3 +41,12 @@ export async function getFamily(id: string): Promise<FamilyDetail> {
   const response = await http.get<FamilyDetail>(`/families/${id}`);
   return response.data;
 }
+
+export async function updateFamily(id: string, value: { familyName: string; isActive: boolean }) { await http.put(`/families/${id}`, value); }
+export async function updateGuardian(familyId: string, guardianId: string, value: Omit<FamilyDetail['guardians'][number], 'id'>) { await http.put(`/families/${familyId}/guardians/${guardianId}`, value); }
+export type AthleteInput = { firstName: string; lastName: string; dateOfBirth: string; gender?: string };
+export async function saveAthlete(familyId: string, value: AthleteInput, athleteId?: string) {
+  if (athleteId) await http.put(`/families/${familyId}/athletes/${athleteId}`, value); else await http.post(`/families/${familyId}/athletes`, value);
+}
+export type HistoricalOrder = { id: string; kind: string; status: string; originalAmount: number; discountAmount: number; amount: number; currency: string; discountCodeSnapshot?: string; familySnapshotJson: string; athleteSnapshotJson?: string; itemSnapshotJson: string; createdOn: string; completedOn?: string };
+export async function getFamilyOrders(familyId: string) { return (await http.get<HistoricalOrder[]>(`/families/${familyId}/orders`)).data; }

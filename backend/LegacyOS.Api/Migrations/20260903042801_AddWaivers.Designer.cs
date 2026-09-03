@@ -3,6 +3,7 @@ using System;
 using LegacyOS.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LegacyOS.Api.Migrations
 {
     [DbContext(typeof(LegacyOSDbContext))]
-    partial class LegacyOSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260903042801_AddWaivers")]
+    partial class AddWaivers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -57,73 +60,6 @@ namespace LegacyOS.Api.Migrations
                     b.HasIndex("FamilyId");
 
                     b.ToTable("activities", (string)null);
-                });
-
-            modelBuilder.Entity("LegacyOS.Api.Features.Discounts.DiscountCode", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("discount_code_id");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("code");
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("DiscountType")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("character varying(25)")
-                        .HasColumnName("discount_type");
-
-                    b.Property<DateTime?>("EndsOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("ends_on");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<int?>("MaxRedemptions")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_redemptions");
-
-                    b.Property<Guid?>("ProductId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("product_id");
-
-                    b.Property<int>("RedemptionCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("redemption_count");
-
-                    b.Property<DateTime?>("StartsOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("starts_on");
-
-                    b.Property<decimal>("Value")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("discount_codes", (string)null);
                 });
 
             modelBuilder.Entity("LegacyOS.Api.Features.Enrollments.Enrollment", b =>
@@ -660,10 +596,6 @@ namespace LegacyOS.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("athlete_id");
 
-                    b.Property<string>("AthleteSnapshotJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("athlete_snapshot_json");
-
                     b.Property<DateTime?>("CompletedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_on");
@@ -678,24 +610,6 @@ namespace LegacyOS.Api.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("currency");
 
-                    b.Property<decimal>("DiscountAmount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("discount_amount");
-
-                    b.Property<Guid?>("DiscountCodeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("discount_code_id");
-
-                    b.Property<string>("DiscountCodeSnapshot")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("discount_code_snapshot");
-
-                    b.Property<bool>("DiscountRedemptionRecorded")
-                        .HasColumnType("boolean")
-                        .HasColumnName("discount_redemption_recorded");
-
                     b.Property<Guid?>("EnrollmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("enrollment_id");
@@ -703,16 +617,6 @@ namespace LegacyOS.Api.Migrations
                     b.Property<Guid>("FamilyId")
                         .HasColumnType("uuid")
                         .HasColumnName("family_id");
-
-                    b.Property<string>("FamilySnapshotJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("family_snapshot_json");
-
-                    b.Property<string>("ItemSnapshotJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("item_snapshot_json");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -723,11 +627,6 @@ namespace LegacyOS.Api.Migrations
                     b.Property<Guid?>("MembershipPlanId")
                         .HasColumnType("uuid")
                         .HasColumnName("membership_plan_id");
-
-                    b.Property<decimal>("OriginalAmount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("original_amount");
 
                     b.Property<Guid>("PortalUserId")
                         .HasColumnType("uuid")
@@ -761,8 +660,6 @@ namespace LegacyOS.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AthleteId");
-
-                    b.HasIndex("DiscountCodeId");
 
                     b.HasIndex("EnrollmentId");
 
@@ -1096,16 +993,6 @@ namespace LegacyOS.Api.Migrations
                     b.Navigation("Family");
                 });
 
-            modelBuilder.Entity("LegacyOS.Api.Features.Discounts.DiscountCode", b =>
-                {
-                    b.HasOne("LegacyOS.Api.Features.Products.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Product");
-                });
-
             modelBuilder.Entity("LegacyOS.Api.Features.Enrollments.Enrollment", b =>
                 {
                     b.HasOne("LegacyOS.Api.Features.Families.Athlete", "Athlete")
@@ -1246,11 +1133,6 @@ namespace LegacyOS.Api.Migrations
                         .HasForeignKey("AthleteId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("LegacyOS.Api.Features.Discounts.DiscountCode", "DiscountCode")
-                        .WithMany()
-                        .HasForeignKey("DiscountCodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("LegacyOS.Api.Features.Enrollments.Enrollment", "Enrollment")
                         .WithMany()
                         .HasForeignKey("EnrollmentId")
@@ -1279,8 +1161,6 @@ namespace LegacyOS.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Athlete");
-
-                    b.Navigation("DiscountCode");
 
                     b.Navigation("Enrollment");
 

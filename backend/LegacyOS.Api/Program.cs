@@ -13,6 +13,8 @@ using LegacyOS.Api.Features.Purchases;
 using LegacyOS.Api.Features.UsaWrestling;
 using LegacyOS.Api.Features.Dashboard;
 using LegacyOS.Api.Features.Sessions;
+using LegacyOS.Api.Features.Waivers;
+using LegacyOS.Api.Features.Discounts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -95,6 +97,8 @@ app.MapPurchaseEndpoints();
 app.MapUsaWrestlingEndpoints();
 app.MapDashboardEndpoints();
 app.MapSessionEndpoints();
+app.MapWaiverEndpoints();
+app.MapDiscountEndpoints();
 
 app.Run();
 

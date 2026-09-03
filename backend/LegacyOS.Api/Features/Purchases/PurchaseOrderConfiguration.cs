@@ -19,6 +19,14 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
         b.Property(x => x.Kind).HasColumnName("kind").HasConversion<string>().HasMaxLength(25);
         b.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(25);
         b.Property(x => x.Amount).HasColumnName("amount").HasPrecision(10, 2);
+        b.Property(x => x.OriginalAmount).HasColumnName("original_amount").HasPrecision(10, 2);
+        b.Property(x => x.DiscountAmount).HasColumnName("discount_amount").HasPrecision(10, 2);
+        b.Property(x => x.DiscountCodeId).HasColumnName("discount_code_id");
+        b.Property(x => x.DiscountCodeSnapshot).HasColumnName("discount_code_snapshot").HasMaxLength(50);
+        b.Property(x => x.FamilySnapshotJson).HasColumnName("family_snapshot_json").HasColumnType("jsonb");
+        b.Property(x => x.AthleteSnapshotJson).HasColumnName("athlete_snapshot_json").HasColumnType("jsonb");
+        b.Property(x => x.ItemSnapshotJson).HasColumnName("item_snapshot_json").HasColumnType("jsonb");
+        b.Property(x => x.DiscountRedemptionRecorded).HasColumnName("discount_redemption_recorded");
         b.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3);
         b.Property(x => x.StripeCheckoutSessionId).HasColumnName("stripe_checkout_session_id").HasMaxLength(255);
         b.Property(x => x.StripeCustomerId).HasColumnName("stripe_customer_id").HasMaxLength(255);
@@ -32,5 +40,6 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
         b.HasOne(x => x.MembershipPlan).WithMany().HasForeignKey(x => x.MembershipPlanId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Enrollment).WithMany().HasForeignKey(x => x.EnrollmentId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.DiscountCode).WithMany().HasForeignKey(x => x.DiscountCodeId).OnDelete(DeleteBehavior.Restrict);
     }
 }

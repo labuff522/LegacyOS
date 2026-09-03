@@ -4,6 +4,7 @@ using LegacyOS.Api.Data;
 using LegacyOS.Api.Features.Enrollments;
 using Microsoft.EntityFrameworkCore;
 using LegacyOS.Api.Features.Sessions;
+using LegacyOS.Api.Features.Discounts;
 
 namespace LegacyOS.Api.Features.Purchases;
 
@@ -38,7 +39,11 @@ public static class PurchaseEndpoints
         var familyId = await FamilyIdAsync(principal, db);
         if (familyId is null || !Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
         var user = await db.PortalUsers.AsNoTracking().SingleAsync(x => x.Id == userId, ct);
-        var order = new PurchaseOrder { Id = Guid.NewGuid(), PortalUserId = userId, FamilyId = familyId.Value, CreatedOn = DateTime.UtcNow };
+        var familySnapshot = await db.Families.Where(x => x.Id == familyId).Select(x => new { x.Id, x.FamilyName,
+            guardians = x.Guardians.Select(g => new { g.Id, g.FirstName, g.LastName, g.Email, g.Phone }).ToList(),
+            athletes = x.Athletes.Select(a => new { a.Id, a.FirstName, a.LastName, a.DateOfBirth, a.Gender }).ToList() }).SingleAsync(ct);
+        var order = new PurchaseOrder { Id = Guid.NewGuid(), PortalUserId = userId, FamilyId = familyId.Value,
+            FamilySnapshotJson = JsonSerializer.Serialize(familySnapshot), CreatedOn = DateTime.UtcNow };
         string itemName;
 
         if (request.MembershipPlanId is Guid planId && request.AthleteId is Guid athleteId)
@@ -52,7 +57,9 @@ public static class PurchaseEndpoints
             var enrollment = new Enrollment { Id = Guid.NewGuid(), AthleteId = athlete.Id, MembershipPlanId = plan.Id, IsActive = false, CreatedOn = DateTime.UtcNow };
             db.Enrollments.Add(enrollment);
             order.Kind = PurchaseKind.MembershipPlan; order.AthleteId = athlete.Id; order.MembershipPlanId = plan.Id;
-            order.Enrollment = enrollment; order.EnrollmentId = enrollment.Id; order.Amount = plan.MonthlyPrice; itemName = plan.Name;
+            order.Enrollment = enrollment; order.EnrollmentId = enrollment.Id; order.Amount = plan.MonthlyPrice; order.OriginalAmount = plan.MonthlyPrice; itemName = plan.Name;
+            order.AthleteSnapshotJson = JsonSerializer.Serialize(new { athlete.Id, athlete.FirstName, athlete.LastName, athlete.DateOfBirth, athlete.Gender });
+            order.ItemSnapshotJson = JsonSerializer.Serialize(new { plan.Id, plan.Name, plan.ShortName, plan.MonthlyPrice, kind = "MembershipPlan" });
         }
         else if (request.ProductId is Guid productId && request.MembershipPlanId is null)
         {
@@ -64,9 +71,25 @@ public static class PurchaseEndpoints
                     !await db.Athletes.AnyAsync(x => x.Id == packageAthleteId && x.FamilyId == familyId, ct))
                     return Results.BadRequest(new { message = "Choose an athlete in your family for this session package." });
                 order.AthleteId = packageAthleteId;
+                var athlete = await db.Athletes.AsNoTracking().SingleAsync(x => x.Id == packageAthleteId, ct);
+                order.AthleteSnapshotJson = JsonSerializer.Serialize(new { athlete.Id, athlete.FirstName, athlete.LastName, athlete.DateOfBirth, athlete.Gender });
             }
             else if (request.AthleteId is not null) return Results.BadRequest(new { message = "This product does not require an athlete." });
-            order.Kind = PurchaseKind.Product; order.ProductId = product.Id; order.Amount = product.Price; itemName = product.Name;
+            order.Kind = PurchaseKind.Product; order.ProductId = product.Id; order.Amount = product.Price; order.OriginalAmount = product.Price; itemName = product.Name;
+            order.ItemSnapshotJson = JsonSerializer.Serialize(new { product.Id, product.Name, product.ShortName, product.Description,
+                product.ProductType, product.Price, product.IsSessionPackage, product.HasUnlimitedSessions, product.SessionCount, product.ValidityDays });
+            if (!string.IsNullOrWhiteSpace(request.DiscountCode))
+            {
+                var now = DateTime.UtcNow; var normalizedCode = request.DiscountCode.Trim().ToUpperInvariant();
+                var discount = await db.DiscountCodes.SingleOrDefaultAsync(x => x.Code == normalizedCode && x.IsActive &&
+                    (x.ProductId == null || x.ProductId == product.Id) && (x.StartsOn == null || x.StartsOn <= now) &&
+                    (x.EndsOn == null || x.EndsOn >= now) && (x.MaxRedemptions == null || x.RedemptionCount < x.MaxRedemptions), ct);
+                if (discount is null) return Results.BadRequest(new { message = "The discount code is invalid or unavailable." });
+                order.DiscountCodeId = discount.Id; order.DiscountCodeSnapshot = discount.Code;
+                order.DiscountAmount = discount.DiscountType == DiscountType.Percentage
+                    ? decimal.Round(product.Price * discount.Value / 100m, 2) : Math.Min(product.Price, discount.Value);
+                order.Amount = Math.Max(0, product.Price - order.DiscountAmount);
+            }
         }
         else return Results.BadRequest(new { message = "Choose one membership plan and athlete, or one product." });
 
@@ -106,7 +129,7 @@ public static class PurchaseEndpoints
         var session = root.GetProperty("data").GetProperty("object");
         if (!session.TryGetProperty("metadata", out var metadata) || !metadata.TryGetProperty("purchase_order_id", out var orderValue) ||
             !Guid.TryParse(orderValue.GetString(), out var orderId)) return Results.Ok();
-        var order = await db.PurchaseOrders.Include(x => x.Enrollment).SingleOrDefaultAsync(x => x.Id == orderId);
+        var order = await db.PurchaseOrders.Include(x => x.Enrollment).Include(x => x.DiscountCode).SingleOrDefaultAsync(x => x.Id == orderId);
         if (order is null || order.StripeCheckoutSessionId != session.GetProperty("id").GetString()) return Results.Ok();
 
         if (type is "checkout.session.completed" or "checkout.session.async_payment_succeeded")
@@ -116,6 +139,8 @@ public static class PurchaseEndpoints
             {
                 order.Status = PurchaseStatus.Completed; order.CompletedOn ??= DateTime.UtcNow;
                 order.StripeCustomerId = StringProperty(session, "customer"); order.StripeSubscriptionId = StringProperty(session, "subscription");
+                if (order.DiscountCode is not null && !order.DiscountRedemptionRecorded)
+                { order.DiscountCode.RedemptionCount++; order.DiscountRedemptionRecorded = true; }
                 if (order.Enrollment is not null) { order.Enrollment.IsActive = true; order.Enrollment.StartDate = DateTime.UtcNow; }
                 if (order.ProductId is Guid productId && order.AthleteId is Guid athleteId &&
                     !await db.SessionCreditLots.AnyAsync(x => x.PurchaseOrderId == order.Id))
@@ -153,4 +178,4 @@ public static class PurchaseEndpoints
             : null;
 }
 
-public record CheckoutRequest(Guid? MembershipPlanId, Guid? ProductId, Guid? AthleteId);
+public record CheckoutRequest(Guid? MembershipPlanId, Guid? ProductId, Guid? AthleteId, string? DiscountCode = null);

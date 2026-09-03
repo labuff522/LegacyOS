@@ -1,202 +1,45 @@
 import { useEffect, useState } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Divider,
-  Stack,
-  Tab,
-  Tabs,
-  Typography,
-} from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, FormControlLabel, InputLabel, MenuItem, Select, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import EditIcon from '@mui/icons-material/Edit';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import PaymentsIcon from '@mui/icons-material/Payments';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/common/PageHeader';
-import { getFamily, type FamilyDetail } from '../../api/families';
+import { getFamily, getFamilyOrders, saveAthlete, updateFamily, updateGuardian, type AthleteInput, type FamilyDetail, type HistoricalOrder } from '../../api/families';
+import { getFamilyWaivers, openStaffWaiver, uploadWaiver, type StaffWaiver } from '../../api/waivers';
 
 export function FamilyDetailPage() {
-  const { familyId } = useParams();
-  const navigate = useNavigate();
-
-  const [family, setFamily] = useState<FamilyDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState(0);
-
-  useEffect(() => {
-    if (!familyId) {
-      setError('Family id was not provided.');
-      setLoading(false);
-      return;
-    }
-
-    getFamily(familyId)
-      .then(setFamily)
-      .catch(() => setError('Unable to load this family.'))
-      .finally(() => setLoading(false));
-  }, [familyId]);
-
-  if (loading) return <CircularProgress />;
-  if (error || !family) return <Alert severity="error">{error ?? 'Family not found.'}</Alert>;
-
-  const primaryGuardian = family.guardians[0];
-
-  return (
-    <>
-      <PageHeader
-        title={family.familyName}
-        subtitle={family.organizations.map((o) => o.name).join(', ') || 'No organization assigned'}
-        action={
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/families')}>
-              Back
-            </Button>
-            <Button variant="outlined" startIcon={<EditIcon />}>Edit</Button>
-            <Button variant="outlined" startIcon={<PersonAddIcon />}>Register Athlete</Button>
-            <Button variant="contained" startIcon={<PaymentsIcon />}>Record Payment</Button>
-          </Stack>
-        }
-      />
-
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <StatCard label="Athletes" value={family.athletes.length.toString()} />
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <StatCard label="Guardians" value={family.guardians.length.toString()} />
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <StatCard label="Organizations" value={family.organizations.length.toString()} />
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <StatCard label="Status" value={family.isActive ? 'Active' : 'Inactive'} />
-        </Grid>
-      </Grid>
-
-      <Card>
-        <CardContent>
-          <Tabs value={tab} onChange={(_, nextTab) => setTab(nextTab)} sx={{ mb: 3 }}>
-            <Tab label="Overview" />
-            <Tab label="Athletes" />
-            <Tab label="Memberships" />
-            <Tab label="Billing" />
-            <Tab label="Documents" />
-            <Tab label="Notes" />
-          </Tabs>
-
-          {tab === 0 && (
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Section title="Primary Contact">
-                  {primaryGuardian ? (
-                    <>
-                      <Typography sx={{ fontWeight: 700 }}>
-                        {primaryGuardian.firstName} {primaryGuardian.lastName}
-                      </Typography>
-                      <Typography color="text.secondary">{primaryGuardian.email}</Typography>
-                      <Typography color="text.secondary">{primaryGuardian.phone}</Typography>
-                    </>
-                  ) : (
-                    <Typography color="text.secondary">No guardian assigned</Typography>
-                  )}
-                </Section>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Section title="Organizations">
-<Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>                    {family.organizations.length === 0 && (
-                      <Typography color="text.secondary">No organization assigned</Typography>
-                    )}
-
-                    {family.organizations.map((organization) => (
-                      <Chip key={organization.id} label={organization.name} variant="outlined" />
-                    ))}
-                  </Stack>
-                </Section>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Section title="Guardians">
-                  {family.guardians.map((guardian) => (
-                    <Box key={guardian.id} sx={{ mb: 2 }}>
-                      <Typography sx={{ fontWeight: 700 }}>
-                        {guardian.firstName} {guardian.lastName}
-                        {guardian.isPrimaryContact && (
-                          <Chip label="Primary" size="small" variant="outlined" sx={{ ml: 1 }} />
-                        )}
-                      </Typography>
-                      <Typography color="text.secondary">{guardian.email}</Typography>
-                      <Typography color="text.secondary">{guardian.phone}</Typography>
-                    </Box>
-                  ))}
-                </Section>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Section title="Athletes">
-                  {family.athletes.map((athlete) => (
-                    <Box key={athlete.id} sx={{ mb: 2 }}>
-                      <Typography sx={{ fontWeight: 700 }}>
-                        {athlete.firstName} {athlete.lastName}
-                      </Typography>
-                      <Typography color="text.secondary">
-                        DOB: {athlete.dateOfBirth}
-                        {athlete.gender ? ` · ${athlete.gender}` : ''}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Section>
-              </Grid>
-            </Grid>
-          )}
-
-          {tab === 1 && <ComingSoon title="Athletes" />}
-          {tab === 2 && <ComingSoon title="Memberships" />}
-          {tab === 3 && <ComingSoon title="Billing" />}
-          {tab === 4 && <ComingSoon title="Documents" />}
-          {tab === 5 && <ComingSoon title="Notes" />}
-        </CardContent>
-      </Card>
-    </>
-  );
+  const { familyId } = useParams(); const navigate = useNavigate(); const [family, setFamily] = useState<FamilyDetail | null>(null);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [tab, setTab] = useState(0);
+  const [familyEdit, setFamilyEdit] = useState(false); const [guardianEdit, setGuardianEdit] = useState<FamilyDetail['guardians'][number] | null>(null);
+  const [athleteEdit, setAthleteEdit] = useState<FamilyDetail['athletes'][number] | null | undefined>();
+  async function load() { if (!familyId) return; setFamily(await getFamily(familyId)); }
+  useEffect(() => { if (familyId) getFamily(familyId).then(setFamily).catch(() => setError('Unable to load this family.')).finally(() => setLoading(false)); }, [familyId]);
+  if (!familyId) return <Alert severity="error">Family id was not provided.</Alert>; if (loading) return <CircularProgress />; if (error || !family) return <Alert severity="error">{error || 'Family not found.'}</Alert>;
+  return <><PageHeader title={family.familyName} subtitle={family.organizations.map(o => o.name).join(', ') || 'No organization assigned'} action={<Stack direction="row" spacing={1}><Button variant="outlined" onClick={() => navigate('/families')}>Back</Button><Button variant="outlined" onClick={() => setFamilyEdit(true)}>Edit family</Button><Button variant="contained" onClick={() => setAthleteEdit(null)}>Add athlete</Button></Stack>}/>
+    <Grid container spacing={2} sx={{ mb: 3 }}><Grid size={{ xs: 12, md: 3 }}><StatCard label="Athletes" value={String(family.athletes.length)}/></Grid><Grid size={{ xs: 12, md: 3 }}><StatCard label="Guardians" value={String(family.guardians.length)}/></Grid><Grid size={{ xs: 12, md: 3 }}><StatCard label="Unsigned waivers" value={String(family.athletes.reduce((n, a) => n + (a.missingRequiredWaivers ?? 0), 0))}/></Grid><Grid size={{ xs: 12, md: 3 }}><StatCard label="Status" value={family.isActive ? 'Active' : 'Inactive'}/></Grid></Grid>
+    <Card><CardContent><Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ mb: 3 }}><Tab label="Overview"/><Tab label="Athletes"/><Tab label="Packages"/><Tab label="Orders"/><Tab label="Documents"/></Tabs>
+      {tab === 0 && <Grid container spacing={3}><Grid size={{ xs: 12, md: 6 }}><Section title="Guardians">{family.guardians.map(g => <Box key={g.id} sx={{ mb: 2 }}><Stack direction="row" sx={{ justifyContent: 'space-between' }}><div><Typography sx={{ fontWeight: 700 }}>{g.firstName} {g.lastName}{g.isPrimaryContact && <Chip size="small" label="Primary" sx={{ ml: 1 }}/>}</Typography><Typography color="text.secondary">{g.email} · {g.phone}</Typography></div><Button onClick={() => setGuardianEdit(g)}>Edit</Button></Stack></Box>)}</Section></Grid><Grid size={{ xs: 12, md: 6 }}><Section title="Organizations"><Stack direction="row" spacing={1}>{family.organizations.map(o => <Chip key={o.id} label={o.name}/>)}</Stack></Section></Grid></Grid>}
+      {tab === 1 && <Stack spacing={2}>{family.athletes.map(a => <Card variant="outlined" key={a.id}><CardContent><Stack direction="row" sx={{ justifyContent: 'space-between' }}><div><Typography variant="h6">{a.firstName} {a.lastName}</Typography><Typography color="text.secondary">DOB {a.dateOfBirth}{a.gender ? ` · ${a.gender}` : ''}</Typography><Chip sx={{ mt: 1 }} color={(a.missingRequiredWaivers ?? 0) > 0 ? 'warning' : 'success'} label={(a.missingRequiredWaivers ?? 0) > 0 ? `${a.missingRequiredWaivers} waiver(s) missing` : 'Waivers current'}/></div><Button onClick={() => setAthleteEdit(a)}>Edit</Button></Stack></CardContent></Card>)}</Stack>}
+      {tab === 2 && <Stack spacing={2}>{family.athletes.map(a => <Box key={a.id}><Typography variant="h6">{a.firstName} {a.lastName}</Typography>{(a.sessionPackages ?? []).map(p => <Chip key={p.id} sx={{ mr: 1, mt: 1 }} label={`${p.productName}: ${p.isUnlimited ? 'Unlimited' : `${p.sessionsRemaining} remaining`} · expires ${new Date(p.expiresOn).toLocaleDateString()}`}/>) }{(a.sessionPackages ?? []).length === 0 && <Typography color="text.secondary">No assigned packages</Typography>}</Box>)}</Stack>}
+      {tab === 3 && <Orders familyId={family.id}/>} {tab === 4 && <Documents family={family}/>}</CardContent></Card>
+    <FamilyDialog open={familyEdit} family={family} close={() => setFamilyEdit(false)} saved={async value => { await updateFamily(family.id, value); setFamilyEdit(false); await load(); }}/>
+    <GuardianDialog key={guardianEdit?.id ?? 'none'} guardian={guardianEdit} close={() => setGuardianEdit(null)} saved={async value => { if (guardianEdit) await updateGuardian(family.id, guardianEdit.id, value); setGuardianEdit(null); await load(); }}/>
+    <AthleteDialog key={athleteEdit?.id ?? (athleteEdit === null ? 'new' : 'closed')} athlete={athleteEdit} close={() => setAthleteEdit(undefined)} saved={async value => { await saveAthlete(family.id, value, athleteEdit?.id); setAthleteEdit(undefined); await load(); }}/></>;
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent>
-        <Typography color="text.secondary" variant="body2">{label}</Typography>
-        <Typography variant="h5" sx={{ mt: 1, fontWeight: 800 }}>{value}</Typography>
-      </CardContent>
-    </Card>
-  );
+function Orders({ familyId }: { familyId: string }) { const [orders, setOrders] = useState<HistoricalOrder[]>([]); useEffect(() => { getFamilyOrders(familyId).then(setOrders); }, [familyId]); return <Stack spacing={2}>{orders.map(o => { const item = JSON.parse(o.itemSnapshotJson) as { Name?: string; name?: string }; const athlete = o.athleteSnapshotJson ? JSON.parse(o.athleteSnapshotJson) as { FirstName?: string; firstName?: string; LastName?: string; lastName?: string } : null; return <Card variant="outlined" key={o.id}><CardContent><Typography variant="h6">{item.Name ?? item.name ?? o.kind}</Typography><Typography color="text.secondary">{athlete ? `${athlete.FirstName ?? athlete.firstName} ${athlete.LastName ?? athlete.lastName} · ` : ''}{new Date(o.createdOn).toLocaleDateString()} · {o.status}</Typography><Typography>${o.originalAmount.toFixed(2)}{o.discountAmount > 0 ? ` − $${o.discountAmount.toFixed(2)} (${o.discountCodeSnapshot})` : ''} = ${o.amount.toFixed(2)}</Typography></CardContent></Card>; })}{orders.length === 0 && <Typography color="text.secondary">No orders recorded.</Typography>}</Stack>; }
+
+function Documents({ family }: { family: FamilyDetail }) {
+  const [waivers, setWaivers] = useState<StaffWaiver[]>([]); const [open, setOpen] = useState(false); const [error, setError] = useState('');
+  const [form, setForm] = useState<{ organizationId: string; name: string; isRequired: boolean; file?: File }>({ organizationId: family.organizations[0]?.id ?? '', name: 'Participation Waiver', isRequired: true });
+  async function load() { setWaivers(await getFamilyWaivers(family.id)); }
+  useEffect(() => { getFamilyWaivers(family.id).then(setWaivers).catch(() => setError('Unable to load waivers.')); }, [family.id]);
+  async function upload() { if (!form.file) return; try { await uploadWaiver(family.id, { ...form, file: form.file }); setOpen(false); await load(); } catch { setError('Unable to upload waiver. Use a PDF no larger than 10 MB.'); } }
+  return <>{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}<Button variant="contained" onClick={() => setOpen(true)}>Upload new waiver version</Button><Stack spacing={2} sx={{ mt: 3 }}>{waivers.map(w => <Card variant="outlined" key={w.id}><CardContent><Stack direction="row" sx={{ justifyContent: 'space-between' }}><div><Typography variant="h6">{w.name} · Version {w.version}</Typography><Typography color="text.secondary">{w.organizationName} · {w.isActive ? 'Active' : 'Archived'} · {w.isRequired ? 'Required' : 'Optional'}</Typography><Typography color="text.secondary">{w.signatures.length} signed: {w.signatures.map(s => `${s.athleteName} (${new Date(s.signedOn).toLocaleDateString()})`).join(', ') || 'none'}</Typography></div><Button onClick={() => openStaffWaiver(w.id, w.fileName)}>View PDF</Button></Stack></CardContent></Card>)}</Stack>
+    <Dialog open={open} onClose={() => setOpen(false)} fullWidth><DialogTitle>Upload waiver version</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><FormControl required><InputLabel>Organization</InputLabel><Select label="Organization" value={form.organizationId} onChange={e => setForm({ ...form, organizationId: e.target.value })}>{family.organizations.map(o => <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>)}</Select></FormControl><TextField required label="Waiver name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/><Button component="label" variant="outlined">Choose PDF<input hidden type="file" accept="application/pdf" onChange={e => setForm({ ...form, file: e.target.files?.[0] })}/></Button>{form.file && <Typography>{form.file.name}</Typography>}<FormControlLabel control={<Checkbox checked={form.isRequired} onChange={e => setForm({ ...form, isRequired: e.target.checked })}/>} label="Required for eligibility"/></Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Cancel</Button><Button variant="contained" disabled={!form.file || !form.organizationId} onClick={upload}>Upload</Button></DialogActions></Dialog></>;
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Box>
-      <Typography variant="h6">{title}</Typography>
-      <Divider sx={{ my: 2 }} />
-      {children}
-    </Box>
-  );
-}
-
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <Box sx={{ py: 6, textAlign: 'center' }}>
-      <Typography variant="h6">{title}</Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
-        Coming soon
-      </Typography>
-    </Box>
-  );
-}
+function FamilyDialog({ open, family, close, saved }: { open: boolean; family: FamilyDetail; close: () => void; saved: (v: { familyName: string; isActive: boolean }) => Promise<void> }) { const [name, setName] = useState(family.familyName); const [active, setActive] = useState(family.isActive); return <Dialog open={open} onClose={close}><DialogTitle>Edit family</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><TextField label="Family name" value={name} onChange={e => setName(e.target.value)}/><FormControlLabel control={<Checkbox checked={active} onChange={e => setActive(e.target.checked)}/>} label="Active"/></Stack></DialogContent><DialogActions><Button onClick={close}>Cancel</Button><Button onClick={() => saved({ familyName: name, isActive: active })}>Save</Button></DialogActions></Dialog>; }
+function GuardianDialog({ guardian, close, saved }: { guardian: FamilyDetail['guardians'][number] | null; close: () => void; saved: (v: Omit<FamilyDetail['guardians'][number], 'id'>) => Promise<void> }) { const [v, setV] = useState(guardian); if (!v) return null; return <Dialog open onClose={close}><DialogTitle>Edit guardian</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><TextField label="First name" value={v.firstName} onChange={e => setV({ ...v, firstName: e.target.value })}/><TextField label="Last name" value={v.lastName} onChange={e => setV({ ...v, lastName: e.target.value })}/><TextField label="Email" value={v.email} onChange={e => setV({ ...v, email: e.target.value })}/><TextField label="Phone" value={v.phone} onChange={e => setV({ ...v, phone: e.target.value })}/></Stack></DialogContent><DialogActions><Button onClick={close}>Cancel</Button><Button onClick={() => saved(v)}>Save</Button></DialogActions></Dialog>; }
+function AthleteDialog({ athlete, close, saved }: { athlete: FamilyDetail['athletes'][number] | null | undefined; close: () => void; saved: (v: AthleteInput) => Promise<void> }) { const [v, setV] = useState<AthleteInput>(athlete ? { firstName: athlete.firstName, lastName: athlete.lastName, dateOfBirth: athlete.dateOfBirth, gender: athlete.gender } : { firstName: '', lastName: '', dateOfBirth: '', gender: '' }); return <Dialog open={athlete !== undefined} onClose={close}><DialogTitle>{athlete ? 'Edit athlete' : 'Add athlete'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><TextField label="First name" value={v.firstName} onChange={e => setV({ ...v, firstName: e.target.value })}/><TextField label="Last name" value={v.lastName} onChange={e => setV({ ...v, lastName: e.target.value })}/><TextField type="date" label="Date of birth" slotProps={{ inputLabel: { shrink: true } }} value={v.dateOfBirth} onChange={e => setV({ ...v, dateOfBirth: e.target.value })}/><TextField label="Gender" value={v.gender} onChange={e => setV({ ...v, gender: e.target.value })}/></Stack></DialogContent><DialogActions><Button onClick={close}>Cancel</Button><Button onClick={() => saved(v)}>Save</Button></DialogActions></Dialog>; }
+function StatCard({ label, value }: { label: string; value: string }) { return <Card><CardContent><Typography color="text.secondary" variant="body2">{label}</Typography><Typography variant="h5" sx={{ mt: 1, fontWeight: 800 }}>{value}</Typography></CardContent></Card>; }
+function Section({ title, children }: { title: string; children: React.ReactNode }) { return <Box><Typography variant="h6">{title}</Typography><Divider sx={{ my: 2 }}/>{children}</Box>; }

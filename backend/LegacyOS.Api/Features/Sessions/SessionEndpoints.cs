@@ -27,6 +27,9 @@ public static class SessionEndpoints
             .Select(x => new
             {
                 x.Id, x.FirstName, x.LastName, x.FamilyId, x.Family.FamilyName,
+                missingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&
+                    w.Organization.FamilyOrganizations.Any(fo => fo.FamilyId == x.FamilyId && fo.IsActive) &&
+                    !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == x.Id && s.ExpiresOn > now)),
                 Packages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive)
                     .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                         l.IsUnlimited, l.SessionsRemaining, l.GrantedOn, l.ExpiresOn,
@@ -46,6 +49,13 @@ public static class SessionEndpoints
     private static async Task<IResult> CheckInAsync(Guid athleteId, CheckInRequest request, ClaimsPrincipal principal, LegacyOSDbContext db)
     {
         var now = DateTime.UtcNow;
+        var missingWaivers = await db.WaiverTemplates.CountAsync(w => w.IsActive && w.IsRequired &&
+            w.Organization.FamilyOrganizations.Any(fo => fo.Family.Athletes.Any(a => a.Id == athleteId) && fo.IsActive) &&
+            !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == athleteId && s.ExpiresOn > now));
+        if (missingWaivers > 0 && !request.OverrideEligibility)
+            return Results.Conflict(new { message = $"Check-in blocked: {missingWaivers} required waiver(s) are unsigned." });
+        if (missingWaivers > 0 && string.IsNullOrWhiteSpace(request.OverrideReason))
+            return Results.BadRequest(new { message = "A staff override reason is required." });
         var lots = await db.SessionCreditLots.Include(x => x.Product)
             .Where(x => x.AthleteId == athleteId && x.IsActive && x.ExpiresOn > now &&
                 (x.IsUnlimited || x.SessionsRemaining > 0)).OrderBy(x => x.ExpiresOn).ToListAsync();
@@ -55,7 +65,8 @@ public static class SessionEndpoints
         Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId);
         db.SessionLedgerEntries.Add(new SessionLedgerEntry { Id = Guid.NewGuid(), SessionCreditLotId = lot.Id,
             AthleteId = athleteId, StaffPortalUserId = staffId, EntryType = SessionLedgerEntryType.CheckIn,
-            SessionChange = lot.IsUnlimited ? 0 : -1, Note = request.Note?.Trim(), CreatedOn = now });
+            SessionChange = lot.IsUnlimited ? 0 : -1,
+            Note = missingWaivers > 0 ? $"ELIGIBILITY OVERRIDE: {request.OverrideReason?.Trim()}. {request.Note?.Trim()}" : request.Note?.Trim(), CreatedOn = now });
         await db.SaveChangesAsync();
         return Results.Ok(new { lot.Id, lot.IsUnlimited, lot.SessionsRemaining, lot.ExpiresOn });
     }
@@ -100,6 +111,6 @@ public static class SessionEndpoints
     }
 }
 
-public record CheckInRequest(string? Note);
+public record CheckInRequest(string? Note, bool OverrideEligibility = false, string? OverrideReason = null);
 public record AdjustmentRequest(int SessionChange, string? Note);
 public record GrantPackageRequest(Guid ProductId, string GrantSource, DateOnly? ActivationDate, string? Note);
