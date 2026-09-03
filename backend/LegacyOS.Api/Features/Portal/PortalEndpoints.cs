@@ -106,7 +106,8 @@ public static class PortalEndpoints
         var organization = await db.Organizations.Where(x => x.IsActive).OrderBy(x => x.CreatedOn).FirstOrDefaultAsync();
         if (organization is null) return Results.Problem("This installation has no internal organization record.");
         var requiredWaivers = await db.WaiverTemplates.Where(x => x.IsActive && x.IsRequired).ToListAsync();
-        if (string.IsNullOrWhiteSpace(request.SignedName) || requiredWaivers.Any(x => !request.AcceptedWaiverIds.Contains(x.Id)))
+        if (requiredWaivers.Count > 0 &&
+            (string.IsNullOrWhiteSpace(request.SignedName) || requiredWaivers.Any(x => !request.AcceptedWaiverIds.Contains(x.Id))))
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["waivers"] = ["Every required waiver must be reviewed and accepted."] });
         var normalizedEmail = TokenUtilities.NormalizeEmail(request.Email);
         if (await db.PortalUsers.AnyAsync(x => x.NormalizedEmail == normalizedEmail))

@@ -111,6 +111,8 @@ Check(selfRegistrationSource.Contains("MapPost(\"/self-register\"") &&
 Check(selfRegistrationSource.Contains("AcceptedWaiverIds") &&
       selfRegistrationSource.Contains("ExpiresOn = signedOn.AddDays(365)"),
     "self-registration requires and records every current required waiver for 365 days");
+Check(selfRegistrationSource.Contains("requiredWaivers.Count > 0"),
+    "self-registration does not require an invisible signature when no required waiver exists");
 var usaWrestlingSource = Source("backend/LegacyOS.Api/Features/UsaWrestling/UsaWrestlingEndpoints.cs");
 Check(usaWrestlingSource.Contains("RequireAuthorization(\"CustomerOnly\")") && usaWrestlingSource.Contains("Family.Guardians.Any"),
     "only an athlete's authenticated family can submit a USA Wrestling number");
