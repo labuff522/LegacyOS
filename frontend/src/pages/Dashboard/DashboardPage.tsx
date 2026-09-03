@@ -1,17 +1,37 @@
-import { Card, CardContent, Grid, Typography } from '@mui/material';
+import { Alert, Card, CardContent, CircularProgress, Grid, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/common/PageHeader';
+import { http } from '../../api/http';
 
-const cards = [
-  { label: 'Families', value: '2' },
-  { label: 'Registration', value: '2' },
-  { label: 'Memberships', value: '4' },
-  { label: 'Database', value: '2' },
-];
+type DashboardSummary = {
+  families: number;
+  athletes: number;
+  activeEnrollments: number;
+  pendingUsaWrestling: number;
+};
 
 export function DashboardPage() {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    http.get<DashboardSummary>('/staff/dashboard')
+      .then(response => setSummary(response.data))
+      .catch(() => setError('Unable to load dashboard counts.'));
+  }, []);
+
+  const cards = summary ? [
+    { label: 'Families', value: summary.families },
+    { label: 'Athletes', value: summary.athletes },
+    { label: 'Active Enrollments', value: summary.activeEnrollments },
+    { label: 'Pending USA Wrestling', value: summary.pendingUsaWrestling },
+  ] : [];
+
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="LegacyOS admin portal shell is online." />
+      <PageHeader title="Dashboard" subtitle="Live operational counts from LegacyOS." />
+      {error && <Alert severity="error">{error}</Alert>}
+      {!summary && !error && <CircularProgress />}
       <Grid container spacing={3}>
         {cards.map((card) => (
           <Grid key={card.label} size={{ xs: 12, md: 3 }}>

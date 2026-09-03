@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using LegacyOS.Api.Features.Purchases;
 using LegacyOS.Api.Features.UsaWrestling;
+using LegacyOS.Api.Features.Dashboard;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -91,6 +92,7 @@ app.MapActivityEndpoints();
 app.MapPortalEndpoints();
 app.MapPurchaseEndpoints();
 app.MapUsaWrestlingEndpoints();
+app.MapDashboardEndpoints();
 
 app.Run();
 
