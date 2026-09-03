@@ -15,6 +15,6 @@ export type RegistrationFormData = {
   guardianEmail: string;
   guardianPhone: string;
   athletes: RegistrationAthlete[];
-  organizationShortName: string;
-  membershipPlanShortName: string;
+  productId: string;
+  productName: string;
 };

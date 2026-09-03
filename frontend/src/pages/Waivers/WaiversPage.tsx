@@ -1,0 +1,14 @@
+import { useEffect, useState } from 'react';
+import { Alert, Button, Card, CardContent, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField, Typography } from '@mui/material';
+import { PageHeader } from '../../components/common/PageHeader';
+import { getGlobalWaivers, openStaffWaiver, uploadGlobalWaiver, type GlobalWaiver } from '../../api/waivers';
+
+export function WaiversPage() {
+  const [items, setItems] = useState<GlobalWaiver[]>([]); const [open, setOpen] = useState(false); const [error, setError] = useState('');
+  const [form, setForm] = useState<{ name: string; isRequired: boolean; file?: File }>({ name: 'Participation Waiver', isRequired: true });
+  async function load() { setItems(await getGlobalWaivers()); }
+  useEffect(() => { getGlobalWaivers().then(setItems).catch(() => setError('Unable to load waivers.')); }, []);
+  async function upload() { if (!form.file) return; try { await uploadGlobalWaiver({ ...form, file: form.file }); setOpen(false); await load(); } catch { setError('Upload failed. Choose a valid PDF no larger than 10 MB.'); } }
+  return <><PageHeader title="Waivers" subtitle="Every active required waiver applies automatically to every athlete in this installation."/>{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}<Button variant="contained" onClick={() => setOpen(true)}>Upload waiver</Button><Stack spacing={2} sx={{ mt: 3 }}>{items.map(w => <Card key={w.id}><CardContent sx={{ display: 'flex', justifyContent: 'space-between' }}><div><Typography variant="h6">{w.name} · Version {w.version}</Typography><Typography color="text.secondary">{w.isActive ? 'Active' : 'Archived'} · {w.isRequired ? 'Required during registration' : 'Optional'} · {w.signatureCount} signatures</Typography></div><Button onClick={() => openStaffWaiver(w.id, w.fileName)}>View PDF</Button></CardContent></Card>)}</Stack>
+    <Dialog open={open} onClose={() => setOpen(false)} fullWidth><DialogTitle>Upload waiver</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><TextField required label="Waiver name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/><Button component="label" variant="outlined">Choose PDF<input hidden type="file" accept="application/pdf" onChange={e => setForm({ ...form, file: e.target.files?.[0] })}/></Button>{form.file && <Typography>{form.file.name}</Typography>}<FormControlLabel control={<Checkbox checked={form.isRequired} onChange={e => setForm({ ...form, isRequired: e.target.checked })}/>} label="Require every athlete to sign during registration"/></Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Cancel</Button><Button variant="contained" disabled={!form.file} onClick={upload}>Upload</Button></DialogActions></Dialog></>;
+}

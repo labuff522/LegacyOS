@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export type SelfRegisterRequest = { familyName: string; guardianFirstName: string; guardianLastName: string;
-  email: string; phone: string; password: string; organizationId: string;
+  email: string; phone: string; password: string; signedName: string; acceptedWaiverIds: string[];
   athletes: { firstName: string; lastName: string; dateOfBirth: string; gender?: string }[] };
 
 export function useAuth() {

@@ -51,12 +51,12 @@ foreach (var endpoint in new[]
 
 var registrationClientSource = Source("frontend/src/api/registration.ts");
 Check(registrationClientSource.Contains("http.post<RegisterFamilyResponse>") &&
-      registrationClientSource.Contains("membershipPlanShortName"),
-    "admin registration uses the authenticated client and submits the selected program");
+      registrationClientSource.Contains("productId"),
+    "admin registration uses the authenticated client and submits the selected product");
 var registrationServiceSource = Source("backend/LegacyOS.Api/Features/Registration/FamilyRegistrationService.cs");
-Check(registrationServiceSource.Contains("x.OrganizationId == organization.Id") &&
-      registrationServiceSource.Contains("_db.Enrollments.AddRange(enrollments)"),
-    "admin registration enrolls athletes only in the selected organization's active plan");
+Check(registrationServiceSource.Contains("x.IsSessionPackage") &&
+      registrationServiceSource.Contains("_db.SessionCreditLots.AddRange(sessionLots)"),
+    "admin registration assigns the selected active session product to each athlete");
 
 var portalSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
 Check(portalSource.Contains("MapGroup(\"/portal\").RequireAuthorization(\"CustomerOnly\")"),
@@ -70,10 +70,11 @@ Check(portalSource.Contains("NormalizeEmail(invitation.Guardian.Email) != normal
 var purchaseSource = Source("backend/LegacyOS.Api/Features/Purchases/PurchaseEndpoints.cs");
 Check(purchaseSource.Contains("RequireAuthorization(\"CustomerOnly\")"), "purchase endpoints require the customer policy");
 Check(purchaseSource.Contains("x.Id == athleteId && x.FamilyId == familyId"), "checkout athlete ownership is enforced");
-Check(purchaseSource.Contains("Enter the athlete's USA Wrestling membership number"),
-    "membership checkout requires a submitted USA Wrestling membership number");
-Check(purchaseSource.Contains("order.Enrollment.IsActive = true") && purchaseSource.Contains("StripeWebhookVerifier.Verify"),
-    "only a verified Stripe webhook activates pending enrollment");
+Check(purchaseSource.Contains("Legacy membership plans are no longer available") &&
+      purchaseSource.Contains("return Results.Ok(new { products })"),
+    "customer catalog and checkout expose products rather than legacy memberships");
+Check(purchaseSource.Contains("StripeWebhookVerifier.Verify"),
+    "payment fulfillment requires a verified Stripe webhook");
 Check(purchaseSource.Contains("!await db.SessionCreditLots.AnyAsync") &&
       purchaseSource.Contains("PurchaseOrderId = order.Id") && purchaseSource.Contains("ExpiresOn = grantedOn.AddDays"),
     "verified Stripe payment grants one idempotent expiring session lot");
@@ -107,6 +108,9 @@ var selfRegistrationSource = Source("backend/LegacyOS.Api/Features/Portal/Portal
 Check(selfRegistrationSource.Contains("MapPost(\"/self-register\"") &&
       selfRegistrationSource.Contains("new Family") && selfRegistrationSource.Contains("new PortalUser"),
     "family self-registration creates a new family-scoped customer account");
+Check(selfRegistrationSource.Contains("AcceptedWaiverIds") &&
+      selfRegistrationSource.Contains("ExpiresOn = signedOn.AddDays(365)"),
+    "self-registration requires and records every current required waiver for 365 days");
 var usaWrestlingSource = Source("backend/LegacyOS.Api/Features/UsaWrestling/UsaWrestlingEndpoints.cs");
 Check(usaWrestlingSource.Contains("RequireAuthorization(\"CustomerOnly\")") && usaWrestlingSource.Contains("Family.Guardians.Any"),
     "only an athlete's authenticated family can submit a USA Wrestling number");

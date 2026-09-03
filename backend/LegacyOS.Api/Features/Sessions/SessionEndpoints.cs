@@ -28,7 +28,6 @@ public static class SessionEndpoints
             {
                 x.Id, x.FirstName, x.LastName, x.FamilyId, x.Family.FamilyName,
                 missingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&
-                    w.Organization.FamilyOrganizations.Any(fo => fo.FamilyId == x.FamilyId && fo.IsActive) &&
                     !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == x.Id && s.ExpiresOn > now)),
                 Packages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive)
                     .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
@@ -50,7 +49,6 @@ public static class SessionEndpoints
     {
         var now = DateTime.UtcNow;
         var missingWaivers = await db.WaiverTemplates.CountAsync(w => w.IsActive && w.IsRequired &&
-            w.Organization.FamilyOrganizations.Any(fo => fo.Family.Athletes.Any(a => a.Id == athleteId) && fo.IsActive) &&
             !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == athleteId && s.ExpiresOn > now));
         if (missingWaivers > 0 && !request.OverrideEligibility)
             return Results.Conflict(new { message = $"Check-in blocked: {missingWaivers} required waiver(s) are unsigned." });

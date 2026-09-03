@@ -20,14 +20,7 @@ export function ReviewStep({ data }: Props) {
           </Box>
         ))}
       </ReviewSection>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <ReviewSection title="Organization"><Typography>{data.organizationShortName === "TheDen" ? "The Den Franklin" : "Wolfpack Wrestling Club"}</Typography></ReviewSection>
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <ReviewSection title="Program"><Typography>{data.membershipPlanShortName}</Typography></ReviewSection>
-        </Grid>
-      </Grid>
+      <Grid container spacing={2}><Grid size={{ xs: 12 }}><ReviewSection title="Product"><Typography>{data.productName}</Typography></ReviewSection></Grid></Grid>
     </Stack>
   );
 }

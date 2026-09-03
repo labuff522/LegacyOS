@@ -2,8 +2,7 @@ import { http } from "./http";
 
 export type RegisterFamilyRequest = {
   familyName: string;
-  organizationShortName: string;
-  membershipPlanShortName: string;
+  productId: string;
   guardian: {
     firstName: string;
     lastName: string;

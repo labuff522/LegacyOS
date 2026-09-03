@@ -2,8 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { DashboardPage } from './pages/Dashboard/DashboardPage';
 import { FamiliesPage } from './pages/Families/FamiliesPage';
 import { FamilyDetailPage } from './pages/Families/FamilyDetailPage';
-import { MembershipsPage } from './pages/Memberships/MembershipsPage';
-import { OrganizationsPage } from './pages/Organizations/OrganizationsPage';
 import { RegistrationPage } from './pages/Registration/RegistrationPage';
 import { AuthPage } from './pages/Portal/AuthPage';
 import { PortalHomePage } from './pages/Portal/PortalHomePage';
@@ -15,7 +13,7 @@ import { UsaWrestlingVerificationsPage } from './pages/UsaWrestling/UsaWrestling
 import { ProductsPage } from './pages/Products/ProductsPage';
 import { SessionsPage } from './pages/Sessions/SessionsPage';
 import { SelfRegistrationPage } from './pages/Portal/SelfRegistrationPage';
-import { ServicesPage } from './pages/Services/ServicesPage';
+import { WaiversPage } from './pages/Waivers/WaiversPage';
 
 function RequireRole({ role, children }: { role: 'Customer' | 'Staff'; children: ReactNode }) {
   const { session } = useAuth();
@@ -40,11 +38,9 @@ export function AppRoutes() {
       <Route path="/families" element={<StaffPage><FamiliesPage /></StaffPage>} />
       <Route path="/families/:familyId" element={<StaffPage><FamilyDetailPage /></StaffPage>} />
       <Route path="/registration" element={<StaffPage><RegistrationPage /></StaffPage>} />
-      <Route path="/memberships" element={<StaffPage><MembershipsPage /></StaffPage>} />
       <Route path="/products" element={<StaffPage><ProductsPage /></StaffPage>} />
-      <Route path="/services" element={<StaffPage><ServicesPage /></StaffPage>} />
       <Route path="/sessions" element={<StaffPage><SessionsPage /></StaffPage>} />
-      <Route path="/organizations" element={<StaffPage><OrganizationsPage /></StaffPage>} />
+      <Route path="/waivers" element={<StaffPage><WaiversPage /></StaffPage>} />
       <Route path="/usa-wrestling-verifications" element={<StaffPage><UsaWrestlingVerificationsPage /></StaffPage>} />
     </Routes>
   );

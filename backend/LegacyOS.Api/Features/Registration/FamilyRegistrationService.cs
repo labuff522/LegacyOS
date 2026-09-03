@@ -4,7 +4,7 @@ using LegacyOS.Api.Features.Organizations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using LegacyOS.Api.Features.Activities;
-using LegacyOS.Api.Features.Enrollments;
+using LegacyOS.Api.Features.Sessions;
 
 namespace LegacyOS.Api.Features.Registration;
 
@@ -20,25 +20,20 @@ public class FamilyRegistrationService
     public async Task<FamilyRegistrationResponse> RegisterFamilyAsync(
         FamilyRegistrationRequest request)
     {
-        var organization = await _db.Organizations
-            .FirstOrDefaultAsync(x => x.ShortName == request.OrganizationShortName);
+        var organization = await _db.Organizations.Where(x => x.IsActive).OrderBy(x => x.CreatedOn).FirstOrDefaultAsync();
 
         if (organization is null)
         {
             throw new InvalidOperationException(
-                $"Organization '{request.OrganizationShortName}' was not found.");
+                "This installation has no internal organization record.");
         }
 
-        var membershipPlan = await _db.MembershipPlans
-            .FirstOrDefaultAsync(x =>
-                x.OrganizationId == organization.Id &&
-                x.ShortName == request.MembershipPlanShortName &&
-                x.IsActive);
+        var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == request.ProductId && x.IsActive && x.IsSessionPackage);
 
-        if (membershipPlan is null)
+        if (product is null || product.ValidityDays is null)
         {
             throw new InvalidOperationException(
-                $"Active membership plan '{request.MembershipPlanShortName}' was not found for organization '{request.OrganizationShortName}'.");
+                "The selected session product is unavailable.");
         }
 
         await using IDbContextTransaction transaction =
@@ -92,19 +87,31 @@ public class FamilyRegistrationService
         _db.Athletes.AddRange(athletes);
         _db.FamilyOrganizations.Add(familyOrganization);
 
-        var enrollments = athletes.Select(athlete => new Enrollment
+        var grantedOn = DateTime.UtcNow;
+        var sessionLots = athletes.Select(athlete => new SessionCreditLot
         {
             Id = Guid.NewGuid(),
             AthleteId = athlete.Id,
             Athlete = athlete,
-            MembershipPlanId = membershipPlan.Id,
-            MembershipPlan = membershipPlan,
-            StartDate = DateTime.UtcNow,
+            ProductId = product.Id,
+            Product = product,
+            GrantSource = SessionGrantSource.PaidOutsideStripe,
+            IsUnlimited = product.HasUnlimitedSessions,
+            SessionsGranted = product.HasUnlimitedSessions ? null : product.SessionCount,
+            SessionsRemaining = product.HasUnlimitedSessions ? null : product.SessionCount,
+            GrantedOn = grantedOn,
+            ExpiresOn = grantedOn.AddDays(product.ValidityDays.Value),
             IsActive = true,
-            CreatedOn = DateTime.UtcNow
         }).ToList();
 
-        _db.Enrollments.AddRange(enrollments);
+        _db.SessionCreditLots.AddRange(sessionLots);
+        _db.SessionLedgerEntries.AddRange(sessionLots.Select(lot => new SessionLedgerEntry
+        {
+            Id = Guid.NewGuid(), SessionCreditLot = lot, AthleteId = lot.AthleteId,
+            EntryType = SessionLedgerEntryType.Grant,
+            SessionChange = product.HasUnlimitedSessions ? 0 : product.SessionCount!.Value,
+            Note = "Assigned during staff registration.", CreatedOn = grantedOn
+        }));
 
         var activity = new Activity
 {

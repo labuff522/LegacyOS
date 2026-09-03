@@ -15,7 +15,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EventIcon from "@mui/icons-material/Event";
-import BusinessIcon from "@mui/icons-material/Business";
+import DescriptionIcon from "@mui/icons-material/Description";
 import SettingsIcon from "@mui/icons-material/Settings";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
@@ -26,6 +26,7 @@ const primaryItems = [
   { label: "Families", path: "/families", icon: <GroupsIcon /> },
   { label: "New Registration", path: "/registration", icon: <PersonAddIcon /> },
   { label: "USA Wrestling", path: "/usa-wrestling-verifications", icon: <VerifiedUserIcon /> },
+  { label: "Waivers", path: "/waivers", icon: <DescriptionIcon /> },
 ];
 
 const catalogItems = [
@@ -38,9 +39,6 @@ const operationsItems = [
   { label: "Events", path: "/events", icon: <EventIcon /> },
 ];
 
-const adminItems = [
-  { label: "Organizations", path: "/organizations", icon: <BusinessIcon /> },
-];
 
 type SidebarProps = {
   drawerWidth: number;
@@ -137,7 +135,6 @@ export function Sidebar({ drawerWidth }: SidebarProps) {
       <NavSection items={primaryItems} />
       <NavSection title="Catalog" items={catalogItems} />
       <NavSection title="Operations" items={operationsItems} />
-      <NavSection title="Administration" items={adminItems} />
 
       <Box sx={{ flexGrow: 1 }} />
 

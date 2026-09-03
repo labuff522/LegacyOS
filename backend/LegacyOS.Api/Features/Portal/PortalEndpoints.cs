@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using LegacyOS.Api.Features.Families;
 using LegacyOS.Api.Features.Organizations;
+using LegacyOS.Api.Features.Waivers;
 
 namespace LegacyOS.Api.Features.Portal;
 
@@ -13,8 +14,11 @@ public static class PortalEndpoints
     {
         var auth = app.MapGroup("/portal/auth");
         auth.MapPost("/register", RegisterAsync).AllowAnonymous();
-        auth.MapGet("/registration-options", async (LegacyOSDbContext db) => Results.Ok(await db.Organizations
-            .Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync())).AllowAnonymous();
+        auth.MapGet("/registration-options", async (LegacyOSDbContext db) => Results.Ok(new
+        {
+            waivers = await db.WaiverTemplates.Where(x => x.IsActive).OrderBy(x => x.Name)
+                .Select(x => new { x.Id, x.Name, x.Version, x.FileName, x.IsRequired }).ToListAsync()
+        })).AllowAnonymous();
         auth.MapPost("/self-register", SelfRegisterAsync).AllowAnonymous();
         auth.MapPost("/login", LoginAsync).AllowAnonymous();
         auth.MapPost("/logout", LogoutAsync).RequireAuthorization();
@@ -92,15 +96,18 @@ public static class PortalEndpoints
         return Results.Ok(response);
     }
 
-    private static async Task<IResult> SelfRegisterAsync(SelfRegisterRequest request, LegacyOSDbContext db,
+    private static async Task<IResult> SelfRegisterAsync(SelfRegisterRequest request, HttpRequest http, LegacyOSDbContext db,
         IPasswordHasher<PortalUser> passwordHasher)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || request.Password.Length < 12 ||
             string.IsNullOrWhiteSpace(request.FamilyName) || string.IsNullOrWhiteSpace(request.GuardianFirstName) ||
             string.IsNullOrWhiteSpace(request.GuardianLastName) || request.Athletes.Count == 0)
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["account"] = ["Complete the family, guardian, athlete, email, and password fields."] });
-        var organization = await db.Organizations.SingleOrDefaultAsync(x => x.Id == request.OrganizationId && x.IsActive);
-        if (organization is null) return Results.BadRequest(new { message = "The selected organization is unavailable." });
+        var organization = await db.Organizations.Where(x => x.IsActive).OrderBy(x => x.CreatedOn).FirstOrDefaultAsync();
+        if (organization is null) return Results.Problem("This installation has no internal organization record.");
+        var requiredWaivers = await db.WaiverTemplates.Where(x => x.IsActive && x.IsRequired).ToListAsync();
+        if (string.IsNullOrWhiteSpace(request.SignedName) || requiredWaivers.Any(x => !request.AcceptedWaiverIds.Contains(x.Id)))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["waivers"] = ["Every required waiver must be reviewed and accepted."] });
         var normalizedEmail = TokenUtilities.NormalizeEmail(request.Email);
         if (await db.PortalUsers.AnyAsync(x => x.NormalizedEmail == normalizedEmail))
             return Results.Conflict(new { message = "An account already exists for this email." });
@@ -119,7 +126,16 @@ public static class PortalEndpoints
         db.FamilyOrganizations.Add(new FamilyOrganization { Family = family, FamilyId = family.Id,
             Organization = organization, OrganizationId = organization.Id, JoinedOn = DateTime.UtcNow, IsActive = true });
         db.PortalUsers.Add(user);
-        var response = AddAccessToken(db, user, DateTime.UtcNow);
+        var signedOn = DateTime.UtcNow;
+        foreach (var athlete in athletes)
+        foreach (var waiver in requiredWaivers)
+            db.WaiverSignatures.Add(new WaiverSignature { Id = Guid.NewGuid(), WaiverTemplate = waiver,
+                WaiverTemplateId = waiver.Id, Family = family, FamilyId = family.Id, Athlete = athlete, AthleteId = athlete.Id,
+                Guardian = guardian, GuardianId = guardian.Id, PortalUser = user, PortalUserId = user.Id,
+                SignedName = request.SignedName.Trim(), WaiverSha256 = waiver.Sha256,
+                IpAddress = http.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                UserAgent = http.Headers.UserAgent.ToString(), SignedOn = signedOn, ExpiresOn = signedOn.AddDays(365) });
+        var response = AddAccessToken(db, user, signedOn);
         await db.SaveChangesAsync(); await transaction.CommitAsync(); return Results.Ok(response);
     }
 
@@ -209,5 +225,5 @@ public record LoginRequest(string Email, string Password);
 public record CreateInvitationRequest(Guid GuardianId);
 public record AuthResponse(string AccessToken, DateTime ExpiresOn, string Email, string Role);
 public record SelfRegisterRequest(string FamilyName, string GuardianFirstName, string GuardianLastName, string Email,
-    string Phone, string Password, Guid OrganizationId, List<SelfRegisterAthlete> Athletes);
+    string Phone, string Password, string SignedName, List<Guid> AcceptedWaiverIds, List<SelfRegisterAthlete> Athletes);
 public record SelfRegisterAthlete(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender);

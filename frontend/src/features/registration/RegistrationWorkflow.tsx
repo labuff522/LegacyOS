@@ -35,8 +35,7 @@ export function RegistrationWorkflow() {
     try {
       const response = await registerFamily({
         familyName: data.familyName.trim(),
-        organizationShortName: data.organizationShortName,
-        membershipPlanShortName: data.membershipPlanShortName,
+        productId: data.productId,
         guardian: {
           firstName: data.guardianFirstName.trim(),
           lastName: data.guardianLastName.trim(),
@@ -114,7 +113,7 @@ export function RegistrationWorkflow() {
         title: "Program",
         subtitle: "Choose the program for this registration.",
         component: <ProgramStep data={data} updateData={updateData} />,
-        canContinue: () => !!data.membershipPlanShortName,
+        canContinue: () => !!data.productId,
       },
       {
         id: "review",

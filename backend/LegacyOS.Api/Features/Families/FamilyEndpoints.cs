@@ -49,7 +49,6 @@ public static class FamilyEndpoints
                             .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                                 l.IsUnlimited, l.SessionsRemaining, l.ExpiresOn }).ToList(),
                         MissingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&
-                            w.Organization.FamilyOrganizations.Any(fo => fo.FamilyId == f.Id && fo.IsActive) &&
                             !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == a.Id && s.ExpiresOn > DateTime.UtcNow))
                     })
                 })
@@ -99,7 +98,6 @@ public static class FamilyEndpoints
                             .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                                 l.IsUnlimited, l.SessionsRemaining, l.ExpiresOn }).ToList(),
                         MissingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&
-                            w.Organization.FamilyOrganizations.Any(fo => fo.FamilyId == f.Id && fo.IsActive) &&
                             !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == a.Id && s.ExpiresOn > DateTime.UtcNow))
                     })
                 })

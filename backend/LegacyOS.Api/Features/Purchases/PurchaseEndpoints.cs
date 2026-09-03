@@ -24,13 +24,10 @@ public static class PurchaseEndpoints
     {
         var familyId = await FamilyIdAsync(principal, db);
         if (familyId is null) return Results.Forbid();
-        var organizationIds = db.FamilyOrganizations.Where(x => x.FamilyId == familyId && x.IsActive).Select(x => x.OrganizationId);
-        var plans = await db.MembershipPlans.Where(x => x.IsActive && organizationIds.Contains(x.OrganizationId))
-            .Select(x => new { x.Id, x.Name, x.MonthlyPrice, organizationName = x.Organization.Name }).ToListAsync();
         var products = await db.Products.Where(x => x.IsActive)
             .Select(x => new { x.Id, x.Name, x.Description, x.Price, productType = x.ProductType.ToString(),
                 x.IsSessionPackage, x.HasUnlimitedSessions, x.SessionCount, x.ValidityDays }).ToListAsync();
-        return Results.Ok(new { membershipPlans = plans, products });
+        return Results.Ok(new { products });
     }
 
     private static async Task<IResult> CheckoutAsync(CheckoutRequest request, ClaimsPrincipal principal,
@@ -38,6 +35,8 @@ public static class PurchaseEndpoints
     {
         var familyId = await FamilyIdAsync(principal, db);
         if (familyId is null || !Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+        if (request.MembershipPlanId is not null)
+            return Results.BadRequest(new { message = "Legacy membership plans are no longer available. Choose a product." });
         var user = await db.PortalUsers.AsNoTracking().SingleAsync(x => x.Id == userId, ct);
         var familySnapshot = await db.Families.Where(x => x.Id == familyId).Select(x => new { x.Id, x.FamilyName,
             guardians = x.Guardians.Select(g => new { g.Id, g.FirstName, g.LastName, g.Email, g.Phone }).ToList(),

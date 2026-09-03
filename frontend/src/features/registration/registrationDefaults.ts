@@ -8,6 +8,6 @@ export const defaultRegistrationFormData: RegistrationFormData = {
   guardianEmail: "",
   guardianPhone: "",
   athletes: [{ firstName: "", lastName: "", dateOfBirth: "", gender: "Male" }],
-  organizationShortName: "Wolfpack",
-  membershipPlanShortName: "WolfpackCompetitor",
+  productId: "",
+  productName: "",
 };

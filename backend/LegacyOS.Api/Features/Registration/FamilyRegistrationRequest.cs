@@ -4,9 +4,7 @@ public class FamilyRegistrationRequest
 {
     public string FamilyName { get; set; } = "";
 
-    public string OrganizationShortName { get; set; } = "";
-
-    public string MembershipPlanShortName { get; set; } = "";
+    public Guid ProductId { get; set; }
 
     public GuardianRequest Guardian { get; set; } = new();
 

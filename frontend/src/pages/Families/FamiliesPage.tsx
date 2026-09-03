@@ -32,12 +32,9 @@ export function FamiliesPage() {
     return families
       .map((family) => {
         const primaryGuardian = family.guardians[0];
-        const organizationNames = family.organizations.map((o) => o.name).join(', ');
-
         return {
           id: family.id,
           familyName: family.familyName,
-          organization: organizationNames || 'Unassigned',
           guardian: primaryGuardian
             ? `${primaryGuardian.firstName} ${primaryGuardian.lastName}`
             : 'No guardian',
@@ -49,7 +46,6 @@ export function FamiliesPage() {
         const value = search.toLowerCase();
         return (
           row.familyName.toLowerCase().includes(value) ||
-          row.organization.toLowerCase().includes(value) ||
           row.guardian.toLowerCase().includes(value)
         );
       });
@@ -57,7 +53,6 @@ export function FamiliesPage() {
 
   const columns: GridColDef[] = [
     { field: 'familyName', headerName: 'Family', flex: 1, minWidth: 160 },
-    { field: 'organization', headerName: 'Organization', flex: 1.3, minWidth: 220 },
     { field: 'guardian', headerName: 'Primary Guardian', flex: 1, minWidth: 180 },
     { field: 'athleteCount', headerName: 'Athletes', width: 110 },
     {
@@ -79,9 +74,9 @@ export function FamiliesPage() {
     <>
       <PageHeader
         title="Families"
-        subtitle="Manage family accounts, guardians, athletes, and organization relationships."
+        subtitle="Manage family accounts, guardians, athletes, packages, and documents."
         action={
-          <Button variant="contained" startIcon={<AddIcon />}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/registration')}>
             Register Family
           </Button>
         }
