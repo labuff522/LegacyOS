@@ -6,9 +6,9 @@ import { useAuth } from '../../features/auth/AuthContext';
 
 type PortalProfile = {
   guardian: { id: string; firstName: string; lastName: string; email: string };
-  family: { id: string; familyName: string; athletes: { id: string; firstName: string; lastName: string; dateOfBirth: string; gender?: string; usaWrestling?: { membershipNumber: string; status: string; expiresOn?: string } }[] };
+  family: { id: string; familyName: string; athletes: { id: string; firstName: string; lastName: string; dateOfBirth: string; gender?: string; usaWrestling?: { membershipNumber: string; status: string; expiresOn?: string }; sessionPackages: { id: string; productName: string; isUnlimited: boolean; sessionsRemaining?: number; expiresOn: string }[] }[] };
 };
-type Catalog = { membershipPlans: { id: string; name: string; monthlyPrice: number; organizationName: string }[]; products: { id: string; name: string; description?: string; price: number }[] };
+type Catalog = { membershipPlans: { id: string; name: string; monthlyPrice: number; organizationName: string }[]; products: { id: string; name: string; description?: string; price: number; isSessionPackage: boolean; hasUnlimitedSessions: boolean; sessionCount?: number; validityDays?: number }[] };
 type Order = { id: string; itemName: string; status: string; amount: number; currency: string; createdOn: string };
 
 export function PortalHomePage() {
@@ -42,7 +42,7 @@ export function PortalHomePage() {
       <Typography color="text.secondary" sx={{ mt: 1 }}>{profile.guardian.firstName} {profile.guardian.lastName} · {profile.guardian.email}</Typography>
       <Divider sx={{ my: 3 }} />
       <Typography variant="h6" sx={{ mb: 2 }}>Athletes</Typography>
-      <Stack spacing={3}>{profile.family.athletes.map(a => <Box key={a.id}><Typography sx={{ fontWeight: 700 }}>{a.firstName} {a.lastName}</Typography><Typography color="text.secondary">Date of birth: {a.dateOfBirth}{a.gender ? ` · ${a.gender}` : ''}</Typography><UsaWrestlingEntry athlete={a} /></Box>)}</Stack>
+      <Stack spacing={3}>{profile.family.athletes.map(a => <Box key={a.id}><Typography sx={{ fontWeight: 700 }}>{a.firstName} {a.lastName}</Typography><Typography color="text.secondary">Date of birth: {a.dateOfBirth}{a.gender ? ` · ${a.gender}` : ''}</Typography>{a.sessionPackages.map(p => <Typography key={p.id} color="text.secondary">{p.productName}: {p.isUnlimited ? 'Unlimited' : `${p.sessionsRemaining} sessions remaining`} · expires {new Date(p.expiresOn).toLocaleDateString()}</Typography>)}<UsaWrestlingEntry athlete={a} /></Box>)}</Stack>
       {profile.family.athletes.length === 0 && <Typography color="text.secondary">No athletes are associated with this family.</Typography>}
     </CardContent></Card>
     <Card><CardContent sx={{ p: 4 }}>
@@ -58,8 +58,8 @@ export function PortalHomePage() {
     </CardContent></Card>
     <Card><CardContent sx={{ p: 4 }}><Typography variant="h5" sx={{ mb: 3 }}>Products</Typography>
       <Stack spacing={2}>{catalog.products.map(product => <Box key={product.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box><Typography sx={{ fontWeight: 700 }}>{product.name}</Typography><Typography color="text.secondary">{product.description ?? ''} · ${product.price.toFixed(2)}</Typography></Box>
-        <Button variant="outlined" disabled={checkoutId === product.id} onClick={() => checkout({ productId: product.id }, product.id)}>Buy</Button>
+        <Box><Typography sx={{ fontWeight: 700 }}>{product.name}</Typography><Typography color="text.secondary">{product.description ?? ''} · ${product.price.toFixed(2)}{product.isSessionPackage ? ` · ${product.hasUnlimitedSessions ? 'Unlimited sessions' : `${product.sessionCount} sessions`} · valid ${product.validityDays} days` : ''}</Typography></Box>
+        <Button variant="outlined" disabled={checkoutId === product.id || (product.isSessionPackage && !athleteId)} onClick={() => checkout({ productId: product.id, athleteId: product.isSessionPackage ? athleteId : undefined }, product.id)}>Buy</Button>
       </Box>)}</Stack>
     </CardContent></Card>
     {orders.length > 0 && <Card><CardContent sx={{ p: 4 }}><Typography variant="h5" sx={{ mb: 3 }}>Recent purchases</Typography><Stack spacing={2}>

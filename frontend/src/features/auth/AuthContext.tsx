@@ -9,6 +9,7 @@ type AuthContextValue = {
   session: AuthSession | null;
   login: (email: string, password: string) => Promise<AuthSession>;
   register: (invitationToken: string, email: string, password: string) => Promise<AuthSession>;
+  selfRegister: (request: SelfRegisterRequest) => Promise<AuthSession>;
   logout: () => Promise<void>;
 };
 
@@ -33,6 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await http.post<AuthSession>('/portal/auth/register', { invitationToken, email, password });
       return save(response.data);
     },
+    async selfRegister(request) {
+      const response = await http.post<AuthSession>('/portal/auth/self-register', request);
+      return save(response.data);
+    },
     async logout() {
       try { await http.post('/portal/auth/logout'); } finally {
         sessionStorage.removeItem(storageKey);
@@ -43,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+export type SelfRegisterRequest = { familyName: string; guardianFirstName: string; guardianLastName: string;
+  email: string; phone: string; password: string; organizationId: string;
+  athletes: { firstName: string; lastName: string; dateOfBirth: string; gender?: string }[] };
 
 export function useAuth() {
   const value = useContext(AuthContext);

@@ -14,6 +14,14 @@ public class Product
 
     public decimal Price { get; set; }
 
+    public bool IsSessionPackage { get; set; }
+
+    public bool HasUnlimitedSessions { get; set; }
+
+    public int? SessionCount { get; set; }
+
+    public int? ValidityDays { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;

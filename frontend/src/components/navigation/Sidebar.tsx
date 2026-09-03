@@ -20,6 +20,7 @@ import EventIcon from "@mui/icons-material/Event";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import HowToRegIcon from "@mui/icons-material/HowToReg";
 import { NavLink } from "react-router-dom";
 
 const primaryItems = [
@@ -36,6 +37,7 @@ const catalogItems = [
 ];
 
 const operationsItems = [
+  { label: "Check-in", path: "/sessions", icon: <HowToRegIcon /> },
   { label: "Schedule", path: "/schedule", icon: <CalendarMonthIcon /> },
   { label: "Events", path: "/events", icon: <EventIcon /> },
 ];

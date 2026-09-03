@@ -12,6 +12,10 @@ import { useAuth } from './features/auth/AuthContext';
 import { AdminLayout } from './components/layout/AdminLayout';
 import type { ReactNode } from 'react';
 import { UsaWrestlingVerificationsPage } from './pages/UsaWrestling/UsaWrestlingVerificationsPage';
+import { ProductsPage } from './pages/Products/ProductsPage';
+import { SessionsPage } from './pages/Sessions/SessionsPage';
+import { SelfRegistrationPage } from './pages/Portal/SelfRegistrationPage';
+import { ServicesPage } from './pages/Services/ServicesPage';
 
 function RequireRole({ role, children }: { role: 'Customer' | 'Staff'; children: ReactNode }) {
   const { session } = useAuth();
@@ -29,7 +33,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/portal" replace />} />
       <Route path="/portal/login" element={<AuthPage mode="login" />} />
-      <Route path="/portal/register" element={<AuthPage mode="register" />} />
+      <Route path="/portal/register" element={<SelfRegistrationPage />} />
       <Route path="/portal" element={<RequireRole role="Customer"><PortalHomePage /></RequireRole>} />
       <Route path="/portal/purchase/success" element={<RequireRole role="Customer"><PurchaseSuccessPage /></RequireRole>} />
       <Route path="/dashboard" element={<StaffPage><DashboardPage /></StaffPage>} />
@@ -37,6 +41,9 @@ export function AppRoutes() {
       <Route path="/families/:familyId" element={<StaffPage><FamilyDetailPage /></StaffPage>} />
       <Route path="/registration" element={<StaffPage><RegistrationPage /></StaffPage>} />
       <Route path="/memberships" element={<StaffPage><MembershipsPage /></StaffPage>} />
+      <Route path="/products" element={<StaffPage><ProductsPage /></StaffPage>} />
+      <Route path="/services" element={<StaffPage><ServicesPage /></StaffPage>} />
+      <Route path="/sessions" element={<StaffPage><SessionsPage /></StaffPage>} />
       <Route path="/organizations" element={<StaffPage><OrganizationsPage /></StaffPage>} />
       <Route path="/usa-wrestling-verifications" element={<StaffPage><UsaWrestlingVerificationsPage /></StaffPage>} />
     </Routes>

@@ -2,6 +2,8 @@ using System.Security.Claims;
 using LegacyOS.Api.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using LegacyOS.Api.Features.Families;
+using LegacyOS.Api.Features.Organizations;
 
 namespace LegacyOS.Api.Features.Portal;
 
@@ -11,6 +13,9 @@ public static class PortalEndpoints
     {
         var auth = app.MapGroup("/portal/auth");
         auth.MapPost("/register", RegisterAsync).AllowAnonymous();
+        auth.MapGet("/registration-options", async (LegacyOSDbContext db) => Results.Ok(await db.Organizations
+            .Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync())).AllowAnonymous();
+        auth.MapPost("/self-register", SelfRegisterAsync).AllowAnonymous();
         auth.MapPost("/login", LoginAsync).AllowAnonymous();
         auth.MapPost("/logout", LogoutAsync).RequireAuthorization();
 
@@ -87,6 +92,37 @@ public static class PortalEndpoints
         return Results.Ok(response);
     }
 
+    private static async Task<IResult> SelfRegisterAsync(SelfRegisterRequest request, LegacyOSDbContext db,
+        IPasswordHasher<PortalUser> passwordHasher)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || request.Password.Length < 12 ||
+            string.IsNullOrWhiteSpace(request.FamilyName) || string.IsNullOrWhiteSpace(request.GuardianFirstName) ||
+            string.IsNullOrWhiteSpace(request.GuardianLastName) || request.Athletes.Count == 0)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["account"] = ["Complete the family, guardian, athlete, email, and password fields."] });
+        var organization = await db.Organizations.SingleOrDefaultAsync(x => x.Id == request.OrganizationId && x.IsActive);
+        if (organization is null) return Results.BadRequest(new { message = "The selected organization is unavailable." });
+        var normalizedEmail = TokenUtilities.NormalizeEmail(request.Email);
+        if (await db.PortalUsers.AnyAsync(x => x.NormalizedEmail == normalizedEmail))
+            return Results.Conflict(new { message = "An account already exists for this email." });
+
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var family = new Family { Id = Guid.NewGuid(), FamilyName = request.FamilyName.Trim(), IsActive = true, CreatedOn = DateTime.UtcNow };
+        var guardian = new Guardian { Id = Guid.NewGuid(), Family = family, FamilyId = family.Id,
+            FirstName = request.GuardianFirstName.Trim(), LastName = request.GuardianLastName.Trim(), Email = request.Email.Trim(),
+            Phone = request.Phone.Trim(), IsPrimaryContact = true, ReceivesBilling = true, ReceivesSms = true };
+        var athletes = request.Athletes.Select(x => new Athlete { Id = Guid.NewGuid(), Family = family, FamilyId = family.Id,
+            FirstName = x.FirstName.Trim(), LastName = x.LastName.Trim(), DateOfBirth = x.DateOfBirth, Gender = x.Gender?.Trim() }).ToList();
+        var user = new PortalUser { Id = Guid.NewGuid(), Email = guardian.Email, NormalizedEmail = normalizedEmail,
+            Guardian = guardian, GuardianId = guardian.Id, Role = PortalRoles.Customer, CreatedOn = DateTime.UtcNow };
+        user.PasswordHash = passwordHasher.HashPassword(user, request.Password);
+        db.Families.Add(family); db.Guardians.Add(guardian); db.Athletes.AddRange(athletes);
+        db.FamilyOrganizations.Add(new FamilyOrganization { Family = family, FamilyId = family.Id,
+            Organization = organization, OrganizationId = organization.Id, JoinedOn = DateTime.UtcNow, IsActive = true });
+        db.PortalUsers.Add(user);
+        var response = AddAccessToken(db, user, DateTime.UtcNow);
+        await db.SaveChangesAsync(); await transaction.CommitAsync(); return Results.Ok(response);
+    }
+
     private static async Task<IResult> LogoutAsync(HttpRequest request, LegacyOSDbContext db)
     {
         var rawToken = request.Headers.Authorization.ToString()[7..].Trim();
@@ -125,7 +161,10 @@ public static class PortalEndpoints
                         UsaWrestling = db.UsaWrestlingVerifications.Where(v => v.AthleteId == x.Id).Select(v => new
                         {
                             v.MembershipNumber, Status = v.Status.ToString(), v.SubmittedOn, v.VerifiedOn, v.ExpiresOn
-                        }).FirstOrDefault()
+                        }).FirstOrDefault(),
+                        SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive)
+                            .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
+                                l.IsUnlimited, l.SessionsRemaining, l.ExpiresOn }).ToList()
                     })
                 }
             })
@@ -169,3 +208,6 @@ public record RegisterRequest(string InvitationToken, string Email, string Passw
 public record LoginRequest(string Email, string Password);
 public record CreateInvitationRequest(Guid GuardianId);
 public record AuthResponse(string AccessToken, DateTime ExpiresOn, string Email, string Role);
+public record SelfRegisterRequest(string FamilyName, string GuardianFirstName, string GuardianLastName, string Email,
+    string Phone, string Password, Guid OrganizationId, List<SelfRegisterAthlete> Athletes);
+public record SelfRegisterAthlete(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender);

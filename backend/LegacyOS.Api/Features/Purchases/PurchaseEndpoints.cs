@@ -3,6 +3,7 @@ using System.Text.Json;
 using LegacyOS.Api.Data;
 using LegacyOS.Api.Features.Enrollments;
 using Microsoft.EntityFrameworkCore;
+using LegacyOS.Api.Features.Sessions;
 
 namespace LegacyOS.Api.Features.Purchases;
 
@@ -26,7 +27,8 @@ public static class PurchaseEndpoints
         var plans = await db.MembershipPlans.Where(x => x.IsActive && organizationIds.Contains(x.OrganizationId))
             .Select(x => new { x.Id, x.Name, x.MonthlyPrice, organizationName = x.Organization.Name }).ToListAsync();
         var products = await db.Products.Where(x => x.IsActive)
-            .Select(x => new { x.Id, x.Name, x.Description, x.Price, productType = x.ProductType.ToString() }).ToListAsync();
+            .Select(x => new { x.Id, x.Name, x.Description, x.Price, productType = x.ProductType.ToString(),
+                x.IsSessionPackage, x.HasUnlimitedSessions, x.SessionCount, x.ValidityDays }).ToListAsync();
         return Results.Ok(new { membershipPlans = plans, products });
     }
 
@@ -52,10 +54,18 @@ public static class PurchaseEndpoints
             order.Kind = PurchaseKind.MembershipPlan; order.AthleteId = athlete.Id; order.MembershipPlanId = plan.Id;
             order.Enrollment = enrollment; order.EnrollmentId = enrollment.Id; order.Amount = plan.MonthlyPrice; itemName = plan.Name;
         }
-        else if (request.ProductId is Guid productId && request.AthleteId is null && request.MembershipPlanId is null)
+        else if (request.ProductId is Guid productId && request.MembershipPlanId is null)
         {
             var product = await db.Products.SingleOrDefaultAsync(x => x.Id == productId && x.IsActive, ct);
             if (product is null) return Results.BadRequest(new { message = "The product is unavailable." });
+            if (product.IsSessionPackage)
+            {
+                if (request.AthleteId is not Guid packageAthleteId ||
+                    !await db.Athletes.AnyAsync(x => x.Id == packageAthleteId && x.FamilyId == familyId, ct))
+                    return Results.BadRequest(new { message = "Choose an athlete in your family for this session package." });
+                order.AthleteId = packageAthleteId;
+            }
+            else if (request.AthleteId is not null) return Results.BadRequest(new { message = "This product does not require an athlete." });
             order.Kind = PurchaseKind.Product; order.ProductId = product.Id; order.Amount = product.Price; itemName = product.Name;
         }
         else return Results.BadRequest(new { message = "Choose one membership plan and athlete, or one product." });
@@ -107,6 +117,25 @@ public static class PurchaseEndpoints
                 order.Status = PurchaseStatus.Completed; order.CompletedOn ??= DateTime.UtcNow;
                 order.StripeCustomerId = StringProperty(session, "customer"); order.StripeSubscriptionId = StringProperty(session, "subscription");
                 if (order.Enrollment is not null) { order.Enrollment.IsActive = true; order.Enrollment.StartDate = DateTime.UtcNow; }
+                if (order.ProductId is Guid productId && order.AthleteId is Guid athleteId &&
+                    !await db.SessionCreditLots.AnyAsync(x => x.PurchaseOrderId == order.Id))
+                {
+                    var product = await db.Products.SingleAsync(x => x.Id == productId);
+                    if (product.IsSessionPackage && product.ValidityDays is int validityDays)
+                    {
+                        var grantedOn = order.CompletedOn.Value;
+                        var lot = new SessionCreditLot { Id = Guid.NewGuid(), AthleteId = athleteId, ProductId = product.Id,
+                            PurchaseOrderId = order.Id, IsUnlimited = product.HasUnlimitedSessions,
+                            SessionsGranted = product.HasUnlimitedSessions ? null : product.SessionCount,
+                            SessionsRemaining = product.HasUnlimitedSessions ? null : product.SessionCount,
+                            GrantedOn = grantedOn, ExpiresOn = grantedOn.AddDays(validityDays), IsActive = true };
+                        db.SessionCreditLots.Add(lot);
+                        db.SessionLedgerEntries.Add(new SessionLedgerEntry { Id = Guid.NewGuid(), SessionCreditLot = lot,
+                            AthleteId = athleteId, EntryType = SessionLedgerEntryType.Grant,
+                            SessionChange = product.HasUnlimitedSessions ? 0 : product.SessionCount!.Value,
+                            Note = $"Granted by completed purchase {order.Id}." });
+                    }
+                }
             }
         }
         else if (type == "checkout.session.expired") order.Status = PurchaseStatus.Expired;

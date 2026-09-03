@@ -74,6 +74,19 @@ Check(purchaseSource.Contains("Enter the athlete's USA Wrestling membership numb
     "membership checkout requires a submitted USA Wrestling membership number");
 Check(purchaseSource.Contains("order.Enrollment.IsActive = true") && purchaseSource.Contains("StripeWebhookVerifier.Verify"),
     "only a verified Stripe webhook activates pending enrollment");
+Check(purchaseSource.Contains("!await db.SessionCreditLots.AnyAsync") &&
+      purchaseSource.Contains("PurchaseOrderId = order.Id") && purchaseSource.Contains("ExpiresOn = grantedOn.AddDays"),
+    "verified Stripe payment grants one idempotent expiring session lot");
+Check(purchaseSource.Contains("x.Id == packageAthleteId && x.FamilyId == familyId"),
+    "session package purchase is scoped to an athlete in the authenticated family");
+var sessionsSource = Source("backend/LegacyOS.Api/Features/Sessions/SessionEndpoints.cs");
+Check(sessionsSource.Contains("RequireAuthorization(\"StaffOnly\")"), "session roster and check-in are staff-only");
+Check(sessionsSource.Contains("OrderBy(x => x.ExpiresOn)") && sessionsSource.Contains("FirstOrDefault(x => !x.IsUnlimited)"),
+    "check-in consumes the earliest-expiring limited package before unlimited access");
+var selfRegistrationSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
+Check(selfRegistrationSource.Contains("MapPost(\"/self-register\"") &&
+      selfRegistrationSource.Contains("new Family") && selfRegistrationSource.Contains("new PortalUser"),
+    "family self-registration creates a new family-scoped customer account");
 var usaWrestlingSource = Source("backend/LegacyOS.Api/Features/UsaWrestling/UsaWrestlingEndpoints.cs");
 Check(usaWrestlingSource.Contains("RequireAuthorization(\"CustomerOnly\")") && usaWrestlingSource.Contains("Family.Guardians.Any"),
     "only an athlete's authenticated family can submit a USA Wrestling number");

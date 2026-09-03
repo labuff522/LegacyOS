@@ -8,6 +8,7 @@ using LegacyOS.Api.Features.Activities;
 using LegacyOS.Api.Features.Portal;
 using LegacyOS.Api.Features.Purchases;
 using LegacyOS.Api.Features.UsaWrestling;
+using LegacyOS.Api.Features.Sessions;
 
 namespace LegacyOS.Api.Data;
 
@@ -40,6 +41,8 @@ public class LegacyOSDbContext : DbContext
     public DbSet<GuardianInvitation> GuardianInvitations => Set<GuardianInvitation>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<UsaWrestlingVerification> UsaWrestlingVerifications => Set<UsaWrestlingVerification>();
+    public DbSet<SessionCreditLot> SessionCreditLots => Set<SessionCreditLot>();
+    public DbSet<SessionLedgerEntry> SessionLedgerEntries => Set<SessionLedgerEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

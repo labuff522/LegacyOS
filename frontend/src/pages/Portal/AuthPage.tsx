@@ -38,7 +38,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           <TextField required type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} label="Password" helperText={mode === 'register' ? 'At least 12 characters' : undefined} value={password} onChange={e => setPassword(e.target.value)} slotProps={{ htmlInput: { minLength: mode === 'register' ? 12 : undefined } }} />
           <Button disabled={submitting} type="submit" size="large" variant="contained">{mode === 'login' ? 'Sign in' : 'Create account'}</Button>
           <Link component="button" type="button" onClick={() => navigate(mode === 'login' ? '/portal/register' : '/portal/login')}>
-            {mode === 'login' ? 'Have an invitation? Create an account' : 'Already have an account? Sign in'}
+            {mode === 'login' ? 'New family? Register and choose a package' : 'Already have an account? Sign in'}
           </Link>
         </Stack>
       </Box>
