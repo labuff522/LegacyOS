@@ -15,7 +15,7 @@ The bootstrap credentials create the first staff account only when that email do
 
 ## Stripe Checkout purchase MVP
 
-Customer catalog and checkout endpoints are under `/portal/purchases`. Membership plans create monthly Stripe subscriptions and an inactive Enrollment; only a verified `checkout.session.completed` or `checkout.session.async_payment_succeeded` webhook activates it. Products use one-time Checkout payments. Configure these secrets outside source control:
+Customer catalog and checkout endpoints are under `/portal/purchases`. Products use one-time Stripe Checkout payments. Only a verified `checkout.session.completed` or `checkout.session.async_payment_succeeded` webhook grants the purchased session package. Configure these secrets outside source control:
 
 - `Stripe__SecretKey`
 - `Stripe__WebhookSecret`

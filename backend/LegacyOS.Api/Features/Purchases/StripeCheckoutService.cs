@@ -10,8 +10,9 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
     {
         var secret = configuration["Stripe:SecretKey"];
         var frontendUrl = configuration["Frontend:BaseUrl"]?.TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(secret) || string.IsNullOrWhiteSpace(frontendUrl))
-            throw new InvalidOperationException("Stripe:SecretKey and Frontend:BaseUrl must be configured.");
+        if (string.IsNullOrWhiteSpace(secret) || secret.Contains("REPLACE_ME", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(frontendUrl))
+            throw new InvalidOperationException("Stripe checkout is not configured. Add a Stripe test secret key and Frontend:BaseUrl, then restart the API.");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "v1/checkout/sessions");
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));

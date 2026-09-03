@@ -3,6 +3,7 @@ import { Alert, Box, Button, Card, CardContent, Checkbox, CircularProgress, Cont
 import { useNavigate } from 'react-router-dom';
 import { http } from '../../api/http';
 import { useAuth } from '../../features/auth/AuthContext';
+import axios from 'axios';
 
 type PortalProfile = {
   guardian: { id: string; firstName: string; lastName: string; email: string };
@@ -28,7 +29,10 @@ export function PortalHomePage() {
   async function checkout(body: { productId?: string; athleteId?: string; discountCode?: string }, id: string) {
     setCheckoutId(id); setError('');
     try { const response = await http.post<{ checkoutUrl: string }>('/portal/purchases/checkout', body); window.location.assign(response.data.checkoutUrl); }
-    catch { setError('Unable to start checkout. Please try again.'); setCheckoutId(''); }
+    catch (checkoutError) {
+      const detail = axios.isAxiosError(checkoutError) ? checkoutError.response?.data?.detail ?? checkoutError.response?.data?.message : null;
+      setError(typeof detail === 'string' ? detail : 'Unable to start checkout. Please try again.'); setCheckoutId('');
+    }
   }
   async function signOut() { await auth.logout(); navigate('/portal/login', { replace: true }); }
   return <Container maxWidth="md" sx={{ py: 6 }}>
