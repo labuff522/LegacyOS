@@ -12,7 +12,11 @@ public static class SessionEndpoints
         group.MapGet("/roster", RosterAsync);
         group.MapGet("/athletes/{athleteId:guid}/ledger", LedgerAsync);
         group.MapPost("/athletes/{athleteId:guid}/check-in", CheckInAsync);
+        group.MapPost("/athletes/{athleteId:guid}/packages", GrantPackageAsync);
         group.MapPost("/lots/{lotId:guid}/adjust", AdjustAsync);
+        group.MapGet("/products", async (LegacyOSDbContext db) => Results.Ok(await db.Products
+            .Where(x => x.IsActive && x.IsSessionPackage).OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name, x.Price, x.HasUnlimitedSessions, x.SessionCount, x.ValidityDays }).ToListAsync()));
         return group;
     }
 
@@ -56,6 +60,30 @@ public static class SessionEndpoints
         return Results.Ok(new { lot.Id, lot.IsUnlimited, lot.SessionsRemaining, lot.ExpiresOn });
     }
 
+    private static async Task<IResult> GrantPackageAsync(Guid athleteId, GrantPackageRequest request,
+        ClaimsPrincipal principal, LegacyOSDbContext db)
+    {
+        var athlete = await db.Athletes.SingleOrDefaultAsync(x => x.Id == athleteId);
+        var product = await db.Products.SingleOrDefaultAsync(x => x.Id == request.ProductId && x.IsActive && x.IsSessionPackage);
+        if (athlete is null || product is null || product.ValidityDays is null) return Results.BadRequest(new { message = "The athlete or session package is unavailable." });
+        if (!Enum.TryParse<SessionGrantSource>(request.GrantSource, true, out var source) || source == SessionGrantSource.Stripe)
+            return Results.BadRequest(new { message = "Choose PaidOutsideStripe or Complimentary." });
+        if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId)) return Results.Forbid();
+        var grantedOn = request.ActivationDate?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc) ?? DateTime.UtcNow;
+        var lot = new SessionCreditLot { Id = Guid.NewGuid(), AthleteId = athlete.Id, ProductId = product.Id,
+            GrantedByStaffPortalUserId = staffId, GrantSource = source, IsUnlimited = product.HasUnlimitedSessions,
+            SessionsGranted = product.HasUnlimitedSessions ? null : product.SessionCount,
+            SessionsRemaining = product.HasUnlimitedSessions ? null : product.SessionCount,
+            GrantedOn = grantedOn, ExpiresOn = grantedOn.AddDays(product.ValidityDays.Value), IsActive = true };
+        db.SessionCreditLots.Add(lot);
+        db.SessionLedgerEntries.Add(new SessionLedgerEntry { Id = Guid.NewGuid(), SessionCreditLot = lot,
+            AthleteId = athlete.Id, StaffPortalUserId = staffId, EntryType = SessionLedgerEntryType.Grant,
+            SessionChange = product.HasUnlimitedSessions ? 0 : product.SessionCount!.Value,
+            Note = $"Staff assignment ({source}): {request.Note?.Trim()}", CreatedOn = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        return Results.Created($"/staff/sessions/lots/{lot.Id}", new { lot.Id, lot.ExpiresOn, lot.SessionsRemaining, lot.IsUnlimited });
+    }
+
     private static async Task<IResult> AdjustAsync(Guid lotId, AdjustmentRequest request, ClaimsPrincipal principal, LegacyOSDbContext db)
     {
         if (request.SessionChange == 0) return Results.BadRequest(new { message = "Adjustment cannot be zero." });
@@ -74,3 +102,4 @@ public static class SessionEndpoints
 
 public record CheckInRequest(string? Note);
 public record AdjustmentRequest(int SessionChange, string? Note);
+public record GrantPackageRequest(Guid ProductId, string GrantSource, DateOnly? ActivationDate, string? Note);

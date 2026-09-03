@@ -12,6 +12,8 @@ public class SessionCreditLotConfiguration : IEntityTypeConfiguration<SessionCre
         b.Property(x => x.AthleteId).HasColumnName("athlete_id");
         b.Property(x => x.ProductId).HasColumnName("product_id");
         b.Property(x => x.PurchaseOrderId).HasColumnName("purchase_order_id");
+        b.Property(x => x.GrantedByStaffPortalUserId).HasColumnName("granted_by_staff_portal_user_id");
+        b.Property(x => x.GrantSource).HasColumnName("grant_source").HasConversion<string>().HasMaxLength(30);
         b.Property(x => x.IsUnlimited).HasColumnName("is_unlimited");
         b.Property(x => x.SessionsGranted).HasColumnName("sessions_granted");
         b.Property(x => x.SessionsRemaining).HasColumnName("sessions_remaining");

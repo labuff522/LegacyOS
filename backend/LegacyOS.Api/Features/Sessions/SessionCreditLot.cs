@@ -11,8 +11,10 @@ public class SessionCreditLot
     public Athlete Athlete { get; set; } = null!;
     public Guid ProductId { get; set; }
     public Product Product { get; set; } = null!;
-    public Guid PurchaseOrderId { get; set; }
-    public PurchaseOrder PurchaseOrder { get; set; } = null!;
+    public Guid? PurchaseOrderId { get; set; }
+    public PurchaseOrder? PurchaseOrder { get; set; }
+    public Guid? GrantedByStaffPortalUserId { get; set; }
+    public SessionGrantSource GrantSource { get; set; } = SessionGrantSource.Stripe;
     public bool IsUnlimited { get; set; }
     public int? SessionsGranted { get; set; }
     public int? SessionsRemaining { get; set; }
@@ -35,3 +37,4 @@ public class SessionLedgerEntry
 }
 
 public enum SessionLedgerEntryType { Grant = 1, CheckIn = 2, Adjustment = 3 }
+public enum SessionGrantSource { Stripe = 1, PaidOutsideStripe = 2, Complimentary = 3 }

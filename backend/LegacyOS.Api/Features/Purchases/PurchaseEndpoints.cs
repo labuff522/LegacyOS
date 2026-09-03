@@ -126,6 +126,7 @@ public static class PurchaseEndpoints
                         var grantedOn = order.CompletedOn.Value;
                         var lot = new SessionCreditLot { Id = Guid.NewGuid(), AthleteId = athleteId, ProductId = product.Id,
                             PurchaseOrderId = order.Id, IsUnlimited = product.HasUnlimitedSessions,
+                            GrantSource = SessionGrantSource.Stripe,
                             SessionsGranted = product.HasUnlimitedSessions ? null : product.SessionCount,
                             SessionsRemaining = product.HasUnlimitedSessions ? null : product.SessionCount,
                             GrantedOn = grantedOn, ExpiresOn = grantedOn.AddDays(validityDays), IsActive = true };

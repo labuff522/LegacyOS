@@ -13,8 +13,6 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import InventoryIcon from "@mui/icons-material/Inventory";
-import CardMembershipIcon from "@mui/icons-material/CardMembership";
-import BuildIcon from "@mui/icons-material/Build";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EventIcon from "@mui/icons-material/Event";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -31,9 +29,7 @@ const primaryItems = [
 ];
 
 const catalogItems = [
-  { label: "Memberships", path: "/memberships", icon: <CardMembershipIcon /> },
   { label: "Products", path: "/products", icon: <InventoryIcon /> },
-  { label: "Services", path: "/services", icon: <BuildIcon /> },
 ];
 
 const operationsItems = [

@@ -83,6 +83,9 @@ var sessionsSource = Source("backend/LegacyOS.Api/Features/Sessions/SessionEndpo
 Check(sessionsSource.Contains("RequireAuthorization(\"StaffOnly\")"), "session roster and check-in are staff-only");
 Check(sessionsSource.Contains("OrderBy(x => x.ExpiresOn)") && sessionsSource.Contains("FirstOrDefault(x => !x.IsUnlimited)"),
     "check-in consumes the earliest-expiring limited package before unlimited access");
+Check(sessionsSource.Contains("PaidOutsideStripe") && sessionsSource.Contains("Complimentary") &&
+      sessionsSource.Contains("GrantedByStaffPortalUserId = staffId"),
+    "staff can assign an existing athlete a non-Stripe package with an audited source");
 var selfRegistrationSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
 Check(selfRegistrationSource.Contains("MapPost(\"/self-register\"") &&
       selfRegistrationSource.Contains("new Family") && selfRegistrationSource.Contains("new PortalUser"),
