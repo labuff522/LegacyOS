@@ -51,7 +51,7 @@ public static class WaiverEndpoints
     {
         if (!request.HasFormContentType) return Results.BadRequest(new { message = "Upload a PDF waiver." });
         var form = await request.ReadFormAsync(); var file = form.Files.GetFile("file");
-        if (file is null || file.Length == 0 || file.Length > 10 * 1024 * 1024 || file.ContentType != "application/pdf")
+        if (file is null || file.Length == 0 || file.Length > 10 * 1024 * 1024)
             return Results.BadRequest(new { message = "A PDF of 10 MB or less is required." });
         if (!Guid.TryParse(form["organizationId"], out var organizationId) ||
             !await db.FamilyOrganizations.AnyAsync(x => x.FamilyId == familyId && x.OrganizationId == organizationId && x.IsActive))
@@ -63,7 +63,7 @@ public static class WaiverEndpoints
     {
         if (!request.HasFormContentType) return Results.BadRequest(new { message = "Upload a PDF waiver." });
         var form = existingForm ?? await request.ReadFormAsync(); var file = form.Files.GetFile("file");
-        if (file is null || file.Length == 0 || file.Length > 10 * 1024 * 1024 || file.ContentType != "application/pdf")
+        if (file is null || file.Length == 0 || file.Length > 10 * 1024 * 1024)
             return Results.BadRequest(new { message = "A PDF of 10 MB or less is required." });
         var name = form["name"].ToString().Trim(); if (name.Length == 0) return Results.BadRequest(new { message = "Waiver name is required." });
         await using var stream = new MemoryStream(); await file.CopyToAsync(stream); var bytes = stream.ToArray();
