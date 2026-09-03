@@ -99,6 +99,9 @@ Check(waiverSource.Contains("x.Id == request.AthleteId && x.FamilyId == guardian
     "guardian can sign only for an athlete in their authenticated family");
 Check(waiverSource.Contains("ExpiresOn = signedOn.AddDays(365)") && waiverSource.Contains("x.ExpiresOn > DateTime.UtcNow"),
     "each athlete waiver signature expires 365 days after signing and can be renewed");
+var httpClientSource = Source("frontend/src/api/http.ts");
+Check(!httpClientSource.Contains("'Content-Type': 'application/json'"),
+    "the shared HTTP client allows multipart waiver uploads to set their boundary");
 Check(purchaseSource.Contains("FamilySnapshotJson = JsonSerializer.Serialize") &&
       purchaseSource.Contains("AthleteSnapshotJson") && purchaseSource.Contains("ItemSnapshotJson"),
     "orders retain immutable family, athlete, and item snapshots");
