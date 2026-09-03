@@ -29,7 +29,7 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="Live operational counts from LegacyOS." />
+      <PageHeader title="Dashboard" subtitle="Live operational counts from DenOS." />
       {error && <Alert severity="error">{error}</Alert>}
       {!summary && !error && <CircularProgress />}
       <Grid container spacing={3}>

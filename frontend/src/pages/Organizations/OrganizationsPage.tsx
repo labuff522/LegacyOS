@@ -9,7 +9,7 @@ const organizations = [
 export function OrganizationsPage() {
   return (
     <>
-      <PageHeader title="Organizations" subtitle="Operating entities inside the LegacyOS ecosystem." />
+      <PageHeader title="Organizations" subtitle="Operating entities inside the DenOS ecosystem." />
       <Grid container spacing={3}>
         {organizations.map((org) => (
           <Grid key={org.name} size={{ xs: 12, md: 6 }}>

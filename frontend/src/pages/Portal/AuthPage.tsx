@@ -26,7 +26,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   return <Container maxWidth="sm" sx={{ py: 10 }}>
     <Card><CardContent sx={{ p: 4 }}>
-      <Typography variant="h4">LegacyOS</Typography>
+      <Typography variant="h4">DenOS</Typography>
       <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
         {mode === 'login' ? 'Sign in to your family portal.' : 'Create your parent or guardian account.'}
       </Typography>

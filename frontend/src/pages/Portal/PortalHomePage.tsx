@@ -37,7 +37,7 @@ export function PortalHomePage() {
   async function signOut() { await auth.logout(); navigate('/portal/login', { replace: true }); }
   return <Container maxWidth="md" sx={{ py: 6 }}>
     <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-      <Box><Typography variant="h4">Family portal</Typography><Typography color="text.secondary">Secure access to your LegacyOS family</Typography></Box>
+      <Box><Typography variant="h4">Family portal</Typography><Typography color="text.secondary">Secure access to your DenOS family</Typography></Box>
       <Button onClick={signOut}>Sign out</Button>
     </Stack>
     {error && <Alert severity="error">{error}</Alert>}
