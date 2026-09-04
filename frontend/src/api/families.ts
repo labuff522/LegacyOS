@@ -43,6 +43,7 @@ export async function getFamily(id: string): Promise<FamilyDetail> {
 }
 
 export async function updateFamily(id: string, value: { familyName: string; isActive: boolean }) { await http.put(`/families/${id}`, value); }
+export async function setFamilyArchived(id: string, archived: boolean) { await http.put(`/families/${id}/archive`, { archived }); }
 export async function updateGuardian(familyId: string, guardianId: string, value: Omit<FamilyDetail['guardians'][number], 'id'>) { await http.put(`/families/${familyId}/guardians/${guardianId}`, value); }
 export type AthleteInput = { firstName: string; lastName: string; dateOfBirth: string; gender?: string };
 export async function saveAthlete(familyId: string, value: AthleteInput, athleteId?: string) {

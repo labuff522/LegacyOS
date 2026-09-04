@@ -1,5 +1,6 @@
 using LegacyOS.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using LegacyOS.Api.Features.Portal;
 
 namespace LegacyOS.Api.Features.Families;
 
@@ -109,7 +110,22 @@ public static class FamilyEndpoints
         group.MapPut("/{id:guid}", async (Guid id, UpdateFamilyRequest request, LegacyOSDbContext db) =>
         {
             var family = await db.Families.SingleOrDefaultAsync(x => x.Id == id); if (family is null) return Results.NotFound();
-            family.FamilyName = request.FamilyName.Trim(); family.IsActive = request.IsActive; family.ModifiedOn = DateTime.UtcNow;
+            family.FamilyName = request.FamilyName.Trim(); family.ModifiedOn = DateTime.UtcNow;
+            await db.SaveChangesAsync(); return Results.NoContent();
+        });
+
+        group.MapPut("/{id:guid}/archive", async (Guid id, ArchiveFamilyRequest request, LegacyOSDbContext db) =>
+        {
+            var family = await db.Families.SingleOrDefaultAsync(x => x.Id == id); if (family is null) return Results.NotFound();
+            family.IsActive = !request.Archived; family.ModifiedOn = DateTime.UtcNow;
+            var userIds = await db.PortalUsers.Where(x => x.GuardianId != null && x.Guardian!.FamilyId == id).Select(x => x.Id).ToListAsync();
+            var users = await db.PortalUsers.Where(x => userIds.Contains(x.Id)).ToListAsync();
+            foreach (var user in users) user.IsActive = !request.Archived;
+            if (request.Archived)
+            {
+                var tokens = await db.PortalAccessTokens.Where(x => userIds.Contains(x.PortalUserId) && x.RevokedOn == null).ToListAsync();
+                foreach (var token in tokens) token.RevokedOn = DateTime.UtcNow;
+            }
             await db.SaveChangesAsync(); return Results.NoContent();
         });
 
@@ -120,8 +136,14 @@ public static class FamilyEndpoints
 
         group.MapPut("/{familyId:guid}/guardians/{guardianId:guid}", async (Guid familyId, Guid guardianId, UpdateGuardianRequest request, LegacyOSDbContext db) =>
         {
+            if (!TokenUtilities.IsValidEmail(request.Email)) return Results.ValidationProblem(new Dictionary<string, string[]> { ["email"] = ["Enter a valid email address."] });
             var guardian = await db.Guardians.SingleOrDefaultAsync(x => x.Id == guardianId && x.FamilyId == familyId); if (guardian is null) return Results.NotFound();
+            var linkedUser = await db.PortalUsers.SingleOrDefaultAsync(x => x.GuardianId == guardianId);
+            var normalizedEmail = TokenUtilities.NormalizeEmail(request.Email);
+            if (linkedUser is not null && await db.PortalUsers.AnyAsync(x => x.Id != linkedUser.Id && x.NormalizedEmail == normalizedEmail))
+                return Results.Conflict(new { message = "Another account already uses this email." });
             guardian.FirstName = request.FirstName.Trim(); guardian.LastName = request.LastName.Trim(); guardian.Email = request.Email.Trim(); guardian.Phone = request.Phone.Trim(); guardian.IsPrimaryContact = request.IsPrimaryContact;
+            if (linkedUser is not null) { linkedUser.Email = guardian.Email; linkedUser.NormalizedEmail = normalizedEmail; }
             await db.SaveChangesAsync(); return Results.NoContent();
         });
 
@@ -144,5 +166,6 @@ public static class FamilyEndpoints
 }
 
 public record UpdateFamilyRequest(string FamilyName, bool IsActive);
+public record ArchiveFamilyRequest(bool Archived);
 public record UpdateGuardianRequest(string FirstName, string LastName, string Email, string Phone, bool IsPrimaryContact);
 public record AthleteEditRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender);

@@ -16,6 +16,7 @@ Check(token.Length >= 43, "access tokens contain at least 256 bits of randomness
 Check(TokenUtilities.Hash(token) == TokenUtilities.Hash(token), "token hashing is deterministic");
 Check(TokenUtilities.Hash(token) != token && TokenUtilities.Hash(token).Length == 64, "only a SHA-256 token hash is persisted");
 Check(TokenUtilities.NormalizeEmail(" Parent@Example.com ") == "PARENT@EXAMPLE.COM", "email identity is normalized");
+Check(TokenUtilities.IsValidEmail("parent@example.com") && !TokenUtilities.IsValidEmail("not-an-email"), "email addresses are validated");
 
 var webhookPayload = "{\"type\":\"checkout.session.completed\"}";
 var webhookSecret = "whsec_test_secret";
@@ -63,6 +64,13 @@ Check(portalSource.Contains("MapGroup(\"/portal\").RequireAuthorization(\"Custom
     "customer portal requires the customer policy");
 Check(portalSource.Contains("Where(g => g.Id == guardianId"),
     "family lookup is scoped from the authenticated guardian claim");
+Check(portalSource.Contains("MapPut(\"/account/email\"") && portalSource.Contains("VerifyHashedPassword") && portalSource.Contains("user.Guardian.Email = user.Email"),
+    "parent email changes require the current password and synchronize the guardian record");
+var familySource = Source("backend/LegacyOS.Api/Features/Families/FamilyEndpoints.cs");
+Check(familySource.Contains("/{id:guid}/archive") && familySource.Contains("token.RevokedOn = DateTime.UtcNow") && familySource.Contains("user.IsActive = !request.Archived"),
+    "archiving preserves family data while disabling accounts and revoking sessions");
+Check(familySource.Contains("linkedUser.NormalizedEmail = normalizedEmail"),
+    "staff guardian email edits synchronize linked login accounts");
 Check(portalSource.Contains("invitation.AcceptedOn != null") && portalSource.Contains("invitation.ExpiresOn <= now"),
     "registration invitations are one-time and expiring");
 Check(portalSource.Contains("NormalizeEmail(invitation.Guardian.Email) != normalizedEmail"),

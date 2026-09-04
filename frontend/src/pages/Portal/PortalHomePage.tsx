@@ -50,6 +50,7 @@ export function PortalHomePage() {
       <Stack spacing={3}>{profile.family.athletes.map(a => <Box key={a.id}><Typography sx={{ fontWeight: 700 }}>{a.firstName} {a.lastName}</Typography><Typography color="text.secondary">Date of birth: {a.dateOfBirth}{a.gender ? ` · ${a.gender}` : ''}</Typography>{a.sessionPackages.map(p => <Typography key={p.id} color="text.secondary">{p.productName}: {p.isUnlimited ? 'Unlimited' : `${p.sessionsRemaining} sessions remaining`} · expires {new Date(p.expiresOn).toLocaleDateString()}</Typography>)}<UsaWrestlingEntry athlete={a} /></Box>)}</Stack>
       {profile.family.athletes.length === 0 && <Typography color="text.secondary">No athletes are associated with this family.</Typography>}
     </CardContent></Card>
+    <AccountSettings currentEmail={profile.guardian.email} onChanged={email => setProfile({ ...profile, guardian: { ...profile.guardian, email } })}/>
     <PortalWaivers />
     <Card><CardContent sx={{ p: 4 }}><Typography variant="h5" sx={{ mb: 3 }}>Products</Typography>
       <FormControl fullWidth sx={{ mb: 3 }}><InputLabel id="athlete-label">Athlete</InputLabel><Select labelId="athlete-label" label="Athlete" value={athleteId} onChange={e => setAthleteId(e.target.value)}>{profile.family.athletes.map(a => <MenuItem key={a.id} value={a.id}>{a.firstName} {a.lastName}</MenuItem>)}</Select></FormControl>
@@ -64,6 +65,12 @@ export function PortalHomePage() {
     </Stack></CardContent></Card>}
     </Stack>}
   </Container>;
+}
+
+function AccountSettings({ currentEmail, onChanged }: { currentEmail: string; onChanged: (email: string) => void }) {
+  const [email, setEmail] = useState(currentEmail); const [password, setPassword] = useState(''); const [message, setMessage] = useState(''); const [error, setError] = useState('');
+  async function save() { setError(''); setMessage(''); try { const response = await http.put<{ email: string }>('/portal/account/email', { newEmail: email, currentPassword: password }); onChanged(response.data.email); setPassword(''); setMessage('Email updated. Use the new email the next time you sign in.'); } catch (saveError) { const data = axios.isAxiosError(saveError) ? saveError.response?.data : null; setError(data?.message ?? data?.errors?.email?.[0] ?? data?.errors?.password?.[0] ?? 'Unable to update email.'); } }
+  return <Card><CardContent sx={{ p: 4 }}><Typography variant="h5">Account settings</Typography><Typography color="text.secondary" sx={{ my: 2 }}>Update the email used for login, receipts, and your guardian record.</Typography>{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}{message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}<Stack spacing={2}><TextField type="email" label="Login email" value={email} onChange={e => setEmail(e.target.value)}/><TextField type="password" label="Current password" value={password} onChange={e => setPassword(e.target.value)}/><Button variant="outlined" disabled={!email.trim() || !password} onClick={save}>Update email</Button></Stack></CardContent></Card>;
 }
 
 type PortalWaiverData = { athletes: { id: string; firstName: string; lastName: string }[]; waivers: { id: string; name: string; version: number; fileName: string; isRequired: boolean; signedAthleteIds: string[] }[] };

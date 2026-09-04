@@ -25,6 +25,7 @@ public static class PortalEndpoints
 
         var portal = app.MapGroup("/portal").RequireAuthorization("CustomerOnly");
         portal.MapGet("/me", GetCurrentFamilyAsync);
+        portal.MapPut("/account/email", UpdateOwnEmailAsync);
 
         app.MapPost("/staff/guardian-invitations", CreateInvitationAsync)
             .RequireAuthorization("StaffOnly");
@@ -38,7 +39,7 @@ public static class PortalEndpoints
         IPasswordHasher<PortalUser> passwordHasher)
     {
         if (string.IsNullOrWhiteSpace(request.InvitationToken) ||
-            string.IsNullOrWhiteSpace(request.Email) ||
+            !TokenUtilities.IsValidEmail(request.Email) ||
             request.Password.Length < 12)
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
@@ -99,7 +100,7 @@ public static class PortalEndpoints
     private static async Task<IResult> SelfRegisterAsync(SelfRegisterRequest request, HttpRequest http, LegacyOSDbContext db,
         IPasswordHasher<PortalUser> passwordHasher)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || request.Password.Length < 12 ||
+        if (!TokenUtilities.IsValidEmail(request.Email) || request.Password.Length < 12 ||
             string.IsNullOrWhiteSpace(request.FamilyName) || string.IsNullOrWhiteSpace(request.GuardianFirstName) ||
             string.IsNullOrWhiteSpace(request.GuardianLastName) || request.Athletes.Count == 0)
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["account"] = ["Complete the family, guardian, athlete, email, and password fields."] });
@@ -151,6 +152,24 @@ public static class PortalEndpoints
             await db.SaveChangesAsync();
         }
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> UpdateOwnEmailAsync(UpdateOwnEmailRequest request, ClaimsPrincipal principal,
+        LegacyOSDbContext db, IPasswordHasher<PortalUser> passwordHasher)
+    {
+        if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+        if (!TokenUtilities.IsValidEmail(request.NewEmail))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["email"] = ["Enter a valid email address."] });
+        var user = await db.PortalUsers.Include(x => x.Guardian).SingleOrDefaultAsync(x => x.Id == userId);
+        if (user?.Guardian is null) return Results.NotFound();
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword ?? string.Empty) == PasswordVerificationResult.Failed)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["password"] = ["The current password is incorrect."] });
+        var normalizedEmail = TokenUtilities.NormalizeEmail(request.NewEmail);
+        if (await db.PortalUsers.AnyAsync(x => x.Id != user.Id && x.NormalizedEmail == normalizedEmail))
+            return Results.Conflict(new { message = "An account already exists for this email." });
+        user.Email = request.NewEmail.Trim(); user.NormalizedEmail = normalizedEmail; user.Guardian.Email = user.Email;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { user.Email });
     }
 
     private static async Task<IResult> GetCurrentFamilyAsync(ClaimsPrincipal principal, LegacyOSDbContext db)
@@ -223,6 +242,7 @@ public static class PortalEndpoints
 
 public record RegisterRequest(string InvitationToken, string Email, string Password);
 public record LoginRequest(string Email, string Password);
+public record UpdateOwnEmailRequest(string NewEmail, string CurrentPassword);
 public record CreateInvitationRequest(Guid GuardianId);
 public record AuthResponse(string AccessToken, DateTime ExpiresOn, string Email, string Role);
 public record SelfRegisterRequest(string FamilyName, string GuardianFirstName, string GuardianLastName, string Email,
