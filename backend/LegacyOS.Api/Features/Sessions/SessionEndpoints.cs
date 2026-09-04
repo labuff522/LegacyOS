@@ -23,10 +23,16 @@ public static class SessionEndpoints
     private static async Task<IResult> RosterAsync(LegacyOSDbContext db)
     {
         var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
         var athletes = await db.Athletes.OrderBy(x => x.LastName).ThenBy(x => x.FirstName)
             .Select(x => new
             {
                 x.Id, x.FirstName, x.LastName, x.FamilyId, x.Family.FamilyName,
+                usaWrestling = db.UsaWrestlingVerifications.Where(v => v.AthleteId == x.Id)
+                    .OrderByDescending(v => v.SubmittedOn)
+                    .Select(v => new { status = v.Status.ToString(), v.MembershipNumber, v.SubmittedOn, v.ExpiresOn,
+                        isExpired = v.Status == LegacyOS.Api.Features.UsaWrestling.UsaWrestlingVerificationStatus.Current && v.ExpiresOn != null && v.ExpiresOn < today })
+                    .FirstOrDefault(),
                 missingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&
                     !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == x.Id && s.ExpiresOn > now)),
                 Packages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive)

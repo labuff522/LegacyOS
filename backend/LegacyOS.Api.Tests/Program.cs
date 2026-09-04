@@ -90,6 +90,8 @@ Check(sessionsSource.Contains("PaidOutsideStripe") && sessionsSource.Contains("C
 Check(sessionsSource.Contains("missingWaivers > 0") && sessionsSource.Contains("OverrideReason") &&
       sessionsSource.Contains("ELIGIBILITY OVERRIDE"),
     "unsigned required waivers block check-in unless staff supplies an audited override reason");
+Check(sessionsSource.Contains("UsaWrestlingVerifications") && sessionsSource.Contains("MembershipNumber"),
+    "the staff check-in roster includes USA Wrestling submission and validation status");
 var waiverSource = Source("backend/LegacyOS.Api/Features/Waivers/WaiverEndpoints.cs");
 Check(waiverSource.Contains("RequireAuthorization(\"StaffOnly\")") && waiverSource.Contains("RequireAuthorization(\"CustomerOnly\")"),
     "waiver administration is staff-only and guardian signing requires customer authentication");
