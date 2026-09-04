@@ -6,6 +6,21 @@ namespace LegacyOS.Api.Features.Purchases;
 
 public class StripeCheckoutService(HttpClient client, IConfiguration configuration)
 {
+    public async Task<StripeCheckoutStatus> GetAsync(string sessionId, CancellationToken ct)
+    {
+        var secret = configuration["Stripe:SecretKey"];
+        if (string.IsNullOrWhiteSpace(secret)) throw new InvalidOperationException("Stripe checkout is not configured.");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"v1/checkout/sessions/{Uri.EscapeDataString(sessionId)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));
+        using var response = await client.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException("Stripe could not confirm this Checkout Session.");
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        var root = json.RootElement;
+        return new StripeCheckoutStatus(root.GetProperty("id").GetString()!, root.GetProperty("payment_status").GetString(),
+            root.TryGetProperty("customer", out var customer) && customer.ValueKind == JsonValueKind.String ? customer.GetString() : null,
+            root.TryGetProperty("subscription", out var subscription) && subscription.ValueKind == JsonValueKind.String ? subscription.GetString() : null);
+    }
+
     public async Task<StripeCheckoutResult> CreateAsync(PurchaseOrder order, string itemName, string email, CancellationToken ct)
     {
         var secret = configuration["Stripe:SecretKey"];
@@ -79,3 +94,4 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
 }
 
 public record StripeCheckoutResult(string SessionId, string Url);
+public record StripeCheckoutStatus(string SessionId, string? PaymentStatus, string? CustomerId, string? SubscriptionId);

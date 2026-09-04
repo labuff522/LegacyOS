@@ -94,6 +94,11 @@ Check(purchaseSource.Contains("Legacy membership plans are no longer available")
     "customer catalog and checkout expose products rather than legacy memberships");
 Check(purchaseSource.Contains("StripeWebhookVerifier.Verify"),
     "payment fulfillment requires a verified Stripe webhook");
+Check(purchaseSource.Contains("MapPost(\"/confirm\"") && purchaseSource.Contains("x.FamilyId == familyId && x.StripeCheckoutSessionId == request.SessionId") &&
+      purchaseSource.Contains("stripe.GetAsync(request.SessionId"),
+    "checkout return securely reconciles the authenticated family's session directly with Stripe");
+Check(purchaseSource.Contains("/staff/purchases/{orderId:guid}/reconcile") && purchaseSource.Contains("RequireAuthorization(\"StaffOnly\")"),
+    "staff-only Stripe reconciliation can recover paid orders when webhook delivery was missed");
 Check(purchaseSource.Contains("await db.SessionCreditLots.AnyAsync") &&
       purchaseSource.Contains("PurchaseOrderId = order.Id") && purchaseSource.Contains("ExpiresOn = grantedOn.AddDays"),
     "verified Stripe payment grants one idempotent expiring session lot");
@@ -148,6 +153,9 @@ Check(usaWrestlingSource.Contains("RequireAuthorization(\"StaffOnly\")") && usaW
     "USA Wrestling decisions are staff-only and audited");
 Check(usaWrestlingSource.Contains("Status = UsaWrestlingVerificationStatus.Pending"),
     "parent submission cannot self-verify a membership");
+Check(usaWrestlingSource.Contains("x.Status != UsaWrestlingVerificationStatus.Current") &&
+      usaWrestlingSource.Contains("new DateOnly(today.Year, 8, 31)"),
+    "USA Wrestling review hides current records and uses the annual August 31 expiration");
 
 if (failures.Count > 0)
 {

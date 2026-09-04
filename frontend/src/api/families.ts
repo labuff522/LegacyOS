@@ -51,3 +51,4 @@ export async function saveAthlete(familyId: string, value: AthleteInput, athlete
 }
 export type HistoricalOrder = { id: string; kind: string; status: string; originalAmount: number; discountAmount: number; amount: number; currency: string; discountCodeSnapshot?: string; familySnapshotJson: string; athleteSnapshotJson?: string; itemSnapshotJson: string; createdOn: string; completedOn?: string };
 export async function getFamilyOrders(familyId: string) { return (await http.get<HistoricalOrder[]>(`/families/${familyId}/orders`)).data; }
+export async function reconcileOrder(orderId: string) { return (await http.post<{ status: string; paymentStatus?: string }>(`/staff/purchases/${orderId}/reconcile`)).data; }

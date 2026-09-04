@@ -34,6 +34,7 @@ public static partial class UsaWrestlingEndpoints
     private static async Task<IResult> PendingAsync(LegacyOSDbContext db)
     {
         var rows = await db.UsaWrestlingVerifications.Include(x => x.Athlete).ThenInclude(x => x.Family)
+            .Where(x => x.Status != UsaWrestlingVerificationStatus.Current && x.Status != UsaWrestlingVerificationStatus.Expired)
             .OrderBy(x => x.Status != UsaWrestlingVerificationStatus.Pending).ThenBy(x => x.SubmittedOn)
             .Select(x => new { x.Id, x.AthleteId, athleteName = x.Athlete.FirstName + " " + x.Athlete.LastName,
                 x.Athlete.Family.FamilyName, x.MembershipNumber, status = x.Status.ToString(), x.SubmittedOn, x.ExpiresOn, x.StaffNotes }).ToListAsync();
@@ -47,7 +48,10 @@ public static partial class UsaWrestlingEndpoints
         if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId)) return Results.Forbid();
         var verification = await db.UsaWrestlingVerifications.SingleOrDefaultAsync(x => x.Id == id);
         if (verification is null) return Results.NotFound();
-        verification.Status = status; verification.ExpiresOn = request.ExpiresOn; verification.StaffNotes = request.StaffNotes?.Trim();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var annualExpiration = new DateOnly(today.Year, 8, 31);
+        if (annualExpiration < today) annualExpiration = annualExpiration.AddYears(1);
+        verification.Status = status; verification.ExpiresOn = status == UsaWrestlingVerificationStatus.Current ? annualExpiration : request.ExpiresOn; verification.StaffNotes = request.StaffNotes?.Trim();
         verification.VerifiedOn = DateTime.UtcNow; verification.VerifiedByPortalUserId = staffId;
         await db.SaveChangesAsync(); return Results.Ok(ToDto(verification));
     }

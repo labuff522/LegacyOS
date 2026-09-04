@@ -12,7 +12,7 @@ export function UsaWrestlingVerificationsPage() {
   async function review(row: Verification, status: string, expiresOn: string, staffNotes: string) {
     await http.put(`/staff/usa-wrestling-verifications/${row.id}`, { status, expiresOn: expiresOn || null, staffNotes }); await load();
   }
-  return <><PageHeader title="USA Wrestling Verification" subtitle="Manually confirm submitted memberships in USA Wrestling Club Admin." />
+  return <><PageHeader title="USA Wrestling Verification" subtitle="Submitted memberships needing review. Current and expired records are hidden." />
     {error && <Alert severity="error">{error}</Alert>}{!rows && !error && <CircularProgress />}
     <Stack spacing={2}>{rows?.map(row => <VerificationCard key={row.id} row={row} review={review} />)}</Stack>
     {rows?.length === 0 && <Typography color="text.secondary">No membership numbers have been submitted.</Typography>}
@@ -23,7 +23,7 @@ function VerificationCard({ row, review }: { row: Verification; review: (row: Ve
   const [status, setStatus] = useState(row.status === 'Pending' ? 'Current' : row.status); const [expires, setExpires] = useState(row.expiresOn ?? ''); const [notes, setNotes] = useState(row.staffNotes ?? ''); const [saving, setSaving] = useState(false);
   return <Card><CardContent><Typography variant="h6">{row.athleteName}</Typography><Typography color="text.secondary">{row.familyName} · Membership #{row.membershipNumber} · Submitted {new Date(row.submittedOn).toLocaleDateString()}</Typography>
     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 2 }}><TextField select label="Decision" value={status} onChange={e => setStatus(e.target.value)} sx={{ minWidth: 150 }}><MenuItem value="Current">Current</MenuItem><MenuItem value="Expired">Expired</MenuItem><MenuItem value="Rejected">Rejected</MenuItem></TextField>
-      <TextField type="date" label="Expiration date" value={expires} onChange={e => setExpires(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} /><TextField label="Staff notes" value={notes} onChange={e => setNotes(e.target.value)} sx={{ flexGrow: 1 }} />
+      {status !== 'Current' && <TextField type="date" label="Expiration date" value={expires} onChange={e => setExpires(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />}<TextField label="Staff notes" value={notes} onChange={e => setNotes(e.target.value)} sx={{ flexGrow: 1 }} />
       <Button variant="contained" disabled={saving} onClick={async () => { setSaving(true); try { await review(row, status, expires, notes); } finally { setSaving(false); } }}>Save verification</Button></Stack>
   </CardContent></Card>;
 }

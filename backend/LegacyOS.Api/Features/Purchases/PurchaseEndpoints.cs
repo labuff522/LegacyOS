@@ -16,6 +16,8 @@ public static class PurchaseEndpoints
         portal.MapGet("/catalog", CatalogAsync);
         portal.MapGet("/", OrdersAsync);
         portal.MapPost("/checkout", CheckoutAsync);
+        portal.MapPost("/confirm", ConfirmAsync);
+        app.MapPost("/staff/purchases/{orderId:guid}/reconcile", ReconcileAsync).RequireAuthorization("StaffOnly");
         app.MapPost("/stripe/webhook", WebhookAsync).AllowAnonymous();
         return portal;
     }
@@ -150,6 +152,38 @@ public static class PurchaseEndpoints
         return Results.Ok(orders);
     }
 
+    private static async Task<IResult> ConfirmAsync(ConfirmCheckoutRequest request, ClaimsPrincipal principal,
+        LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
+    {
+        var familyId = await FamilyIdAsync(principal, db);
+        if (familyId is null || string.IsNullOrWhiteSpace(request.SessionId)) return Results.Forbid();
+        var order = await db.PurchaseOrders.Include(x => x.Enrollment).Include(x => x.DiscountCode)
+            .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.StripeCheckoutSessionId == request.SessionId, ct);
+        if (order is null) return Results.NotFound();
+        if (order.Status == PurchaseStatus.Completed) return Results.Ok(new { status = order.Status.ToString() });
+        var session = await stripe.GetAsync(request.SessionId, ct);
+        if (session.SessionId != order.StripeCheckoutSessionId) return Results.Forbid();
+        order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId;
+        await stripe.SetFiniteEndAsync(order, ct);
+        if (session.PaymentStatus == "paid") await CompleteOrderAsync(order, db);
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { status = order.Status.ToString() });
+    }
+
+    private static async Task<IResult> ReconcileAsync(Guid orderId, LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
+    {
+        var order = await db.PurchaseOrders.Include(x => x.Enrollment).Include(x => x.DiscountCode).SingleOrDefaultAsync(x => x.Id == orderId, ct);
+        if (order is null) return Results.NotFound();
+        if (order.Status == PurchaseStatus.Completed) return Results.Ok(new { status = order.Status.ToString() });
+        if (string.IsNullOrWhiteSpace(order.StripeCheckoutSessionId)) return Results.BadRequest(new { message = "This order has no Stripe Checkout Session." });
+        var session = await stripe.GetAsync(order.StripeCheckoutSessionId, ct);
+        order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId;
+        await stripe.SetFiniteEndAsync(order, ct);
+        if (session.PaymentStatus == "paid") await CompleteOrderAsync(order, db);
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { status = order.Status.ToString(), paymentStatus = session.PaymentStatus });
+    }
+
     private static async Task<IResult> WebhookAsync(HttpRequest request, IConfiguration config, LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
     {
         using var reader = new StreamReader(request.Body);
@@ -185,11 +219,7 @@ public static class PurchaseEndpoints
             await stripe.SetFiniteEndAsync(order, ct);
             if (paymentStatus == "paid" || (paymentStatus == "no_payment_required" && order.BillingDayOfMonth is null))
             {
-                order.Status = PurchaseStatus.Completed; order.CompletedOn ??= DateTime.UtcNow;
-                if (order.DiscountCode is not null && !order.DiscountRedemptionRecorded)
-                { order.DiscountCode.RedemptionCount++; order.DiscountRedemptionRecorded = true; }
-                if (order.Enrollment is not null) { order.Enrollment.IsActive = true; order.Enrollment.StartDate = DateTime.UtcNow; }
-                await GrantPackageAsync(order, db);
+                await CompleteOrderAsync(order, db);
             }
         }
         else if (type == "checkout.session.expired") order.Status = PurchaseStatus.Expired;
@@ -223,6 +253,16 @@ public static class PurchaseEndpoints
             SessionChange = product.HasUnlimitedSessions ? 0 : product.SessionCount!.Value,
             Note = $"Granted by completed purchase {order.Id}." });
     }
+
+    private static async Task CompleteOrderAsync(PurchaseOrder order, LegacyOSDbContext db)
+    {
+        order.Status = PurchaseStatus.Completed; order.CompletedOn ??= DateTime.UtcNow;
+        if (order.DiscountCode is not null && !order.DiscountRedemptionRecorded)
+        { order.DiscountCode.RedemptionCount++; order.DiscountRedemptionRecorded = true; }
+        if (order.Enrollment is not null) { order.Enrollment.IsActive = true; order.Enrollment.StartDate = DateTime.UtcNow; }
+        await GrantPackageAsync(order, db);
+    }
 }
 
 public record CheckoutRequest(Guid? MembershipPlanId, Guid? ProductId, Guid? AthleteId, string? DiscountCode = null);
+public record ConfirmCheckoutRequest(string SessionId);
