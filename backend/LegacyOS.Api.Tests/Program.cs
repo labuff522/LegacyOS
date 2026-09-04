@@ -86,6 +86,9 @@ Check(purchaseSource.Contains("Sign every required waiver for this athlete befor
     "new athletes must submit USA Wrestling membership and sign required waivers before purchase");
 Check(purchaseSource.Contains("IsAutomaticSibling") && purchaseSource.Contains("siblingPosition >= x.SiblingStartPosition"),
     "eligible sibling discounts are applied automatically based on distinct athlete purchase order");
+var discountClientSource = Source("frontend/src/pages/Products/ProductsPage.tsx");
+Check(discountClientSource.Contains("Deactivate") && discountClientSource.Contains("Reactivate") && discountClientSource.Contains("http.put(`/discount-codes/"),
+    "staff can safely deactivate and reactivate discount codes while preserving history");
 Check(purchaseSource.Contains("Legacy membership plans are no longer available") &&
       purchaseSource.Contains("return Results.Ok(new { products })"),
     "customer catalog and checkout expose products rather than legacy memberships");
