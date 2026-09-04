@@ -3,6 +3,7 @@ using LegacyOS.Api.Features.Families;
 using LegacyOS.Api.Features.Memberships;
 using LegacyOS.Api.Features.Products;
 using LegacyOS.Api.Features.Discounts;
+using LegacyOS.Api.Features.Sessions;
 
 namespace LegacyOS.Api.Features.Purchases;
 
@@ -18,6 +19,7 @@ public class PurchaseOrder
     public MembershipPlan? MembershipPlan { get; set; }
     public Guid? ProductId { get; set; }
     public Product? Product { get; set; }
+    public SessionCreditLot? SessionCreditLot { get; set; }
     public Guid? EnrollmentId { get; set; }
     public Enrollment? Enrollment { get; set; }
     public PurchaseKind Kind { get; set; }
@@ -35,6 +37,8 @@ public class PurchaseOrder
     public string? StripeCheckoutSessionId { get; set; }
     public string? StripeCustomerId { get; set; }
     public string? StripeSubscriptionId { get; set; }
+    public string? StripePaymentIntentId { get; set; }
+    public string? StripeRefundId { get; set; }
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedOn { get; set; }
     public bool DiscountRedemptionRecorded { get; set; }
@@ -42,7 +46,10 @@ public class PurchaseOrder
     public decimal InstallmentAmount { get; set; }
     public bool IsPaymentCurrent { get; set; } = true;
     public int? BillingDayOfMonth { get; set; }
+    public DateTime? RefundedOn { get; set; }
+    public Guid? RefundedByPortalUserId { get; set; }
+    public string? RefundReason { get; set; }
 }
 
 public enum PurchaseKind { MembershipPlan = 1, Product = 2 }
-public enum PurchaseStatus { Pending = 1, Completed = 2, Failed = 3, Expired = 4 }
+public enum PurchaseStatus { Pending = 1, Completed = 2, Failed = 3, Expired = 4, Refunded = 5 }

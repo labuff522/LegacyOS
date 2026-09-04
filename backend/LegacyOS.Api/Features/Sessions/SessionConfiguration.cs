@@ -23,7 +23,7 @@ public class SessionCreditLotConfiguration : IEntityTypeConfiguration<SessionCre
         b.HasIndex(x => x.PurchaseOrderId).IsUnique();
         b.HasOne(x => x.Athlete).WithMany().HasForeignKey(x => x.AthleteId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne(x => x.PurchaseOrder).WithMany().HasForeignKey(x => x.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.PurchaseOrder).WithOne(x => x.SessionCreditLot).HasForeignKey<SessionCreditLot>(x => x.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

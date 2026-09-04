@@ -99,6 +99,12 @@ Check(purchaseSource.Contains("MapPost(\"/confirm\"") && purchaseSource.Contains
     "checkout return securely reconciles the authenticated family's session directly with Stripe");
 Check(purchaseSource.Contains("/staff/purchases/{orderId:guid}/reconcile") && purchaseSource.Contains("RequireAuthorization(\"StaffOnly\")"),
     "staff-only Stripe reconciliation can recover paid orders when webhook delivery was missed");
+Check(purchaseSource.Contains("/staff/purchases/{orderId:guid}/refund") && purchaseSource.Contains("SessionLedgerEntryType.Refund") &&
+      purchaseSource.Contains("order.SessionCreditLot.IsActive = false"),
+    "staff refunds cancel access with a preserved audit entry");
+Check(purchaseSource.Contains("refund.created") && purchaseSource.Contains("StripePaymentIntentId == paymentIntentId") &&
+      purchaseSource.Contains("DeactivateRefundedPackage(refundedOrder"),
+    "verified Stripe refund webhooks deactivate matching package access");
 Check(purchaseSource.Contains("await db.SessionCreditLots.AnyAsync") &&
       purchaseSource.Contains("PurchaseOrderId = order.Id") && purchaseSource.Contains("ExpiresOn = grantedOn.AddDays"),
     "verified Stripe payment grants one idempotent expiring session lot");

@@ -36,5 +36,5 @@ public class SessionLedgerEntry
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 }
 
-public enum SessionLedgerEntryType { Grant = 1, CheckIn = 2, Adjustment = 3 }
+public enum SessionLedgerEntryType { Grant = 1, CheckIn = 2, Adjustment = 3, Refund = 4 }
 public enum SessionGrantSource { Stripe = 1, PaidOutsideStripe = 2, Complimentary = 3 }

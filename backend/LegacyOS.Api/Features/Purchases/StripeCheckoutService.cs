@@ -10,15 +10,48 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
     {
         var secret = configuration["Stripe:SecretKey"];
         if (string.IsNullOrWhiteSpace(secret)) throw new InvalidOperationException("Stripe checkout is not configured.");
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"v1/checkout/sessions/{Uri.EscapeDataString(sessionId)}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"v1/checkout/sessions/{Uri.EscapeDataString(sessionId)}?expand[]=payment_intent&expand[]=subscription.latest_invoice.payment_intent");
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));
         using var response = await client.SendAsync(request, ct);
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException("Stripe could not confirm this Checkout Session.");
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
         var root = json.RootElement;
+        var paymentIntentId = IdFrom(root, "payment_intent");
+        if (paymentIntentId is null && root.TryGetProperty("subscription", out var subscriptionObject) && subscriptionObject.ValueKind == JsonValueKind.Object &&
+            subscriptionObject.TryGetProperty("latest_invoice", out var invoice) && invoice.ValueKind == JsonValueKind.Object)
+            paymentIntentId = IdFrom(invoice, "payment_intent");
         return new StripeCheckoutStatus(root.GetProperty("id").GetString()!, root.GetProperty("payment_status").GetString(),
             root.TryGetProperty("customer", out var customer) && customer.ValueKind == JsonValueKind.String ? customer.GetString() : null,
-            root.TryGetProperty("subscription", out var subscription) && subscription.ValueKind == JsonValueKind.String ? subscription.GetString() : null);
+            IdFrom(root, "subscription"), paymentIntentId);
+    }
+
+    public async Task<StripeRefundResult> RefundAndCancelAsync(string? paymentIntentId, string? subscriptionId, Guid orderId, CancellationToken ct)
+    {
+        var secret = configuration["Stripe:SecretKey"]!; string? refundId = null;
+        if (!string.IsNullOrWhiteSpace(paymentIntentId))
+        {
+            using var refundRequest = new HttpRequestMessage(HttpMethod.Post, "v1/refunds");
+            refundRequest.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));
+            refundRequest.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["payment_intent"] = paymentIntentId, ["reason"] = "requested_by_customer", ["metadata[purchase_order_id]"] = orderId.ToString() });
+            using var refundResponse = await client.SendAsync(refundRequest, ct);
+            var refundBody = await refundResponse.Content.ReadAsStringAsync(ct);
+            if (!refundResponse.IsSuccessStatusCode) throw new InvalidOperationException("Stripe could not refund the collected payment.");
+            using var refundJson = JsonDocument.Parse(refundBody); refundId = refundJson.RootElement.GetProperty("id").GetString();
+        }
+        if (!string.IsNullOrWhiteSpace(subscriptionId))
+        {
+            using var cancelRequest = new HttpRequestMessage(HttpMethod.Delete, $"v1/subscriptions/{Uri.EscapeDataString(subscriptionId)}");
+            cancelRequest.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));
+            using var cancelResponse = await client.SendAsync(cancelRequest, ct);
+            if (!cancelResponse.IsSuccessStatusCode) throw new InvalidOperationException("The payment was refunded, but Stripe could not cancel future installments. Cancel the subscription in Stripe immediately.");
+        }
+        return new StripeRefundResult(refundId);
+    }
+
+    private static string? IdFrom(JsonElement parent, string name)
+    {
+        if (!parent.TryGetProperty(name, out var value)) return null;
+        return value.ValueKind == JsonValueKind.String ? value.GetString() : value.ValueKind == JsonValueKind.Object && value.TryGetProperty("id", out var id) ? id.GetString() : null;
     }
 
     public async Task<StripeCheckoutResult> CreateAsync(PurchaseOrder order, string itemName, string email, CancellationToken ct)
@@ -42,7 +75,8 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
             ["line_items[0][quantity]"] = "1",
             ["line_items[0][price_data][currency]"] = order.Currency,
             ["line_items[0][price_data][unit_amount]"] = decimal.Round(order.InstallmentAmount * 100m).ToString("0"),
-            ["line_items[0][price_data][product_data][name]"] = itemName
+            ["line_items[0][price_data][product_data][name]"] = itemName,
+            ["branding_settings[display_name]"] = "DenOS"
         };
         if (order.InstallmentCount > 1)
         {
@@ -94,4 +128,5 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
 }
 
 public record StripeCheckoutResult(string SessionId, string Url);
-public record StripeCheckoutStatus(string SessionId, string? PaymentStatus, string? CustomerId, string? SubscriptionId);
+public record StripeCheckoutStatus(string SessionId, string? PaymentStatus, string? CustomerId, string? SubscriptionId, string? PaymentIntentId);
+public record StripeRefundResult(string? RefundId);

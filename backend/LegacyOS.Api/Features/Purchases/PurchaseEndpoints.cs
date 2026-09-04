@@ -18,6 +18,7 @@ public static class PurchaseEndpoints
         portal.MapPost("/checkout", CheckoutAsync);
         portal.MapPost("/confirm", ConfirmAsync);
         app.MapPost("/staff/purchases/{orderId:guid}/reconcile", ReconcileAsync).RequireAuthorization("StaffOnly");
+        app.MapPost("/staff/purchases/{orderId:guid}/refund", RefundAsync).RequireAuthorization("StaffOnly");
         app.MapPost("/stripe/webhook", WebhookAsync).AllowAnonymous();
         return portal;
     }
@@ -163,7 +164,7 @@ public static class PurchaseEndpoints
         if (order.Status == PurchaseStatus.Completed) return Results.Ok(new { status = order.Status.ToString() });
         var session = await stripe.GetAsync(request.SessionId, ct);
         if (session.SessionId != order.StripeCheckoutSessionId) return Results.Forbid();
-        order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId;
+        order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId; order.StripePaymentIntentId = session.PaymentIntentId;
         await stripe.SetFiniteEndAsync(order, ct);
         if (session.PaymentStatus == "paid" || (session.PaymentStatus == "no_payment_required" && session.SubscriptionId is not null))
             await CompleteOrderAsync(order, db);
@@ -178,12 +179,43 @@ public static class PurchaseEndpoints
         if (order.Status == PurchaseStatus.Completed) return Results.Ok(new { status = order.Status.ToString() });
         if (string.IsNullOrWhiteSpace(order.StripeCheckoutSessionId)) return Results.BadRequest(new { message = "This order has no Stripe Checkout Session." });
         var session = await stripe.GetAsync(order.StripeCheckoutSessionId, ct);
-        order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId;
+        order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId; order.StripePaymentIntentId = session.PaymentIntentId;
         await stripe.SetFiniteEndAsync(order, ct);
         if (session.PaymentStatus == "paid" || (session.PaymentStatus == "no_payment_required" && session.SubscriptionId is not null))
             await CompleteOrderAsync(order, db);
         await db.SaveChangesAsync(ct);
         return Results.Ok(new { status = order.Status.ToString(), paymentStatus = session.PaymentStatus });
+    }
+
+    private static async Task<IResult> RefundAsync(Guid orderId, RefundOrderRequest request, ClaimsPrincipal principal,
+        LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason) || !Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
+            return Results.BadRequest(new { message = "A staff refund reason is required." });
+        var order = await db.PurchaseOrders.Include(x => x.SessionCreditLot).SingleOrDefaultAsync(x => x.Id == orderId, ct);
+        if (order is null) return Results.NotFound();
+        if (order.Status == PurchaseStatus.Refunded) return Results.Ok(new { status = order.Status.ToString() });
+        if (order.Status != PurchaseStatus.Completed) return Results.BadRequest(new { message = "Only a completed order can be refunded." });
+        if (string.IsNullOrWhiteSpace(order.StripePaymentIntentId) && !string.IsNullOrWhiteSpace(order.StripeCheckoutSessionId))
+        {
+            var session = await stripe.GetAsync(order.StripeCheckoutSessionId, ct);
+            order.StripePaymentIntentId = session.PaymentIntentId; order.StripeSubscriptionId ??= session.SubscriptionId;
+        }
+        var result = await stripe.RefundAndCancelAsync(order.StripePaymentIntentId, order.StripeSubscriptionId, order.Id, ct);
+        order.StripeRefundId = result.RefundId; order.Status = PurchaseStatus.Refunded; order.RefundedOn = DateTime.UtcNow;
+        order.RefundedByPortalUserId = staffId; order.RefundReason = request.Reason.Trim(); order.IsPaymentCurrent = false;
+        DeactivateRefundedPackage(order, db, staffId);
+        await db.SaveChangesAsync(ct); return Results.Ok(new { status = order.Status.ToString() });
+    }
+
+    private static void DeactivateRefundedPackage(PurchaseOrder order, LegacyOSDbContext db, Guid? staffId)
+    {
+        if (order.SessionCreditLot is null || !order.SessionCreditLot.IsActive) return;
+        var remaining = order.SessionCreditLot.IsUnlimited ? 0 : order.SessionCreditLot.SessionsRemaining ?? 0;
+        order.SessionCreditLot.IsActive = false;
+        db.SessionLedgerEntries.Add(new SessionLedgerEntry { Id = Guid.NewGuid(), SessionCreditLotId = order.SessionCreditLot.Id,
+            AthleteId = order.SessionCreditLot.AthleteId, StaffPortalUserId = staffId, EntryType = SessionLedgerEntryType.Refund,
+            SessionChange = -remaining, Note = $"Package deactivated after refund: {order.RefundReason}", CreatedOn = DateTime.UtcNow });
     }
 
     private static async Task<IResult> WebhookAsync(HttpRequest request, IConfiguration config, LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
@@ -196,6 +228,21 @@ public static class PurchaseEndpoints
         using var document = JsonDocument.Parse(payload);
         var root = document.RootElement; var type = root.GetProperty("type").GetString();
         var session = root.GetProperty("data").GetProperty("object");
+        if (type is "refund.created" or "refund.updated")
+        {
+            var paymentIntentId = StringProperty(session, "payment_intent");
+            if (StringProperty(session, "status") == "succeeded" && paymentIntentId is not null)
+            {
+                var refundedOrder = await db.PurchaseOrders.Include(x => x.SessionCreditLot).SingleOrDefaultAsync(x => x.StripePaymentIntentId == paymentIntentId);
+                if (refundedOrder is not null && refundedOrder.Status != PurchaseStatus.Refunded)
+                {
+                    refundedOrder.StripeRefundId = StringProperty(session, "id"); refundedOrder.Status = PurchaseStatus.Refunded;
+                    refundedOrder.RefundedOn = DateTime.UtcNow; refundedOrder.RefundReason = "Refund confirmed by Stripe."; refundedOrder.IsPaymentCurrent = false;
+                    DeactivateRefundedPackage(refundedOrder, db, null); await db.SaveChangesAsync();
+                }
+            }
+            return Results.Ok();
+        }
         if (type is "invoice.paid" or "invoice.payment_failed")
         {
             var subscriptionId = StringProperty(session, "subscription");
@@ -268,3 +315,4 @@ public static class PurchaseEndpoints
 
 public record CheckoutRequest(Guid? MembershipPlanId, Guid? ProductId, Guid? AthleteId, string? DiscountCode = null);
 public record ConfirmCheckoutRequest(string SessionId);
+public record RefundOrderRequest(string Reason);
