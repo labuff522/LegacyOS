@@ -15,6 +15,9 @@ public class DiscountCode
     public DateTime? EndsOn { get; set; }
     public int? MaxRedemptions { get; set; }
     public int RedemptionCount { get; set; }
+    public bool IsAutomaticSibling { get; set; }
+    public int? SiblingStartPosition { get; set; }
+    public int? SiblingEndPosition { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 }

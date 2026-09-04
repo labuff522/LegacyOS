@@ -11,6 +11,9 @@ public class DiscountCodeConfiguration : IEntityTypeConfiguration<DiscountCode>
         b.Property(x => x.Value).HasColumnName("value").HasPrecision(10, 2); b.Property(x => x.ProductId).HasColumnName("product_id");
         b.Property(x => x.StartsOn).HasColumnName("starts_on"); b.Property(x => x.EndsOn).HasColumnName("ends_on"); b.Property(x => x.MaxRedemptions).HasColumnName("max_redemptions");
         b.Property(x => x.RedemptionCount).HasColumnName("redemption_count"); b.Property(x => x.IsActive).HasColumnName("is_active"); b.Property(x => x.CreatedOn).HasColumnName("created_on");
+        b.Property(x => x.IsAutomaticSibling).HasColumnName("is_automatic_sibling");
+        b.Property(x => x.SiblingStartPosition).HasColumnName("sibling_start_position");
+        b.Property(x => x.SiblingEndPosition).HasColumnName("sibling_end_position");
         b.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
     }
 }

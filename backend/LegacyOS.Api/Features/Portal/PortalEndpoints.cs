@@ -26,6 +26,7 @@ public static class PortalEndpoints
         var portal = app.MapGroup("/portal").RequireAuthorization("CustomerOnly");
         portal.MapGet("/me", GetCurrentFamilyAsync);
         portal.MapPut("/account/email", UpdateOwnEmailAsync);
+        portal.MapPost("/athletes", AddOwnAthleteAsync);
 
         app.MapPost("/staff/guardian-invitations", CreateInvitationAsync)
             .RequireAuthorization("StaffOnly");
@@ -172,6 +173,25 @@ public static class PortalEndpoints
         return Results.Ok(new { user.Email });
     }
 
+    private static async Task<IResult> AddOwnAthleteAsync(AddOwnAthleteRequest request, ClaimsPrincipal principal, LegacyOSDbContext db)
+    {
+        if (!Guid.TryParse(principal.FindFirstValue("guardian_id"), out var guardianId)) return Results.Forbid();
+        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName) ||
+            request.DateOfBirth == default || request.DateOfBirth > DateOnly.FromDateTime(DateTime.UtcNow) ||
+            string.IsNullOrWhiteSpace(request.UsaWrestlingMembershipNumber))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["athlete"] = ["Name, date of birth, and USA Wrestling membership number are required."] });
+        var familyId = await db.Guardians.Where(x => x.Id == guardianId && x.Family.IsActive).Select(x => (Guid?)x.FamilyId).SingleOrDefaultAsync();
+        if (familyId is null) return Results.Forbid();
+        var athlete = new Athlete { Id = Guid.NewGuid(), FamilyId = familyId.Value, FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(), DateOfBirth = request.DateOfBirth, Gender = request.Gender?.Trim() };
+        db.Athletes.Add(athlete);
+        db.UsaWrestlingVerifications.Add(new Features.UsaWrestling.UsaWrestlingVerification { Id = Guid.NewGuid(), Athlete = athlete,
+            AthleteId = athlete.Id, MembershipNumber = request.UsaWrestlingMembershipNumber.Trim(),
+            Status = Features.UsaWrestling.UsaWrestlingVerificationStatus.Pending, SubmittedOn = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        return Results.Created($"/portal/athletes/{athlete.Id}", new { athlete.Id });
+    }
+
     private static async Task<IResult> GetCurrentFamilyAsync(ClaimsPrincipal principal, LegacyOSDbContext db)
     {
         if (!Guid.TryParse(principal.FindFirstValue("guardian_id"), out var guardianId))
@@ -243,6 +263,7 @@ public static class PortalEndpoints
 public record RegisterRequest(string InvitationToken, string Email, string Password);
 public record LoginRequest(string Email, string Password);
 public record UpdateOwnEmailRequest(string NewEmail, string CurrentPassword);
+public record AddOwnAthleteRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, string UsaWrestlingMembershipNumber);
 public record CreateInvitationRequest(Guid GuardianId);
 public record AuthResponse(string AccessToken, DateTime ExpiresOn, string Email, string Role);
 public record SelfRegisterRequest(string FamilyName, string GuardianFirstName, string GuardianLastName, string Email,

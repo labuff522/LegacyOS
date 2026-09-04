@@ -69,6 +69,11 @@ public static class PurchaseEndpoints
                 if (request.AthleteId is not Guid packageAthleteId ||
                     !await db.Athletes.AnyAsync(x => x.Id == packageAthleteId && x.FamilyId == familyId, ct))
                     return Results.BadRequest(new { message = "Choose an athlete in your family for this session package." });
+                if (!await db.UsaWrestlingVerifications.AnyAsync(x => x.AthleteId == packageAthleteId, ct))
+                    return Results.BadRequest(new { message = "Enter the athlete's USA Wrestling membership number before purchasing." });
+                var missingWaiver = await db.WaiverTemplates.AnyAsync(w => w.IsActive && w.IsRequired &&
+                    !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == packageAthleteId && s.ExpiresOn > DateTime.UtcNow), ct);
+                if (missingWaiver) return Results.BadRequest(new { message = "Sign every required waiver for this athlete before purchasing." });
                 order.AthleteId = packageAthleteId;
                 var athlete = await db.Athletes.AsNoTracking().SingleAsync(x => x.Id == packageAthleteId, ct);
                 order.AthleteSnapshotJson = JsonSerializer.Serialize(new { athlete.Id, athlete.FirstName, athlete.LastName, athlete.DateOfBirth, athlete.Gender });
@@ -81,13 +86,35 @@ public static class PurchaseEndpoints
             order.ItemSnapshotJson = JsonSerializer.Serialize(new { product.Id, product.Name, product.ShortName, product.Description,
                 product.ProductType, product.Price, product.IsSessionPackage, product.HasUnlimitedSessions, product.SessionCount, product.ValidityDays,
                 product.InstallmentCount, product.BillingDayOfMonth });
+            DiscountCode? discount = null;
             if (!string.IsNullOrWhiteSpace(request.DiscountCode))
             {
                 var now = DateTime.UtcNow; var normalizedCode = request.DiscountCode.Trim().ToUpperInvariant();
-                var discount = await db.DiscountCodes.SingleOrDefaultAsync(x => x.Code == normalizedCode && x.IsActive &&
+                discount = await db.DiscountCodes.SingleOrDefaultAsync(x => x.Code == normalizedCode && !x.IsAutomaticSibling && x.IsActive &&
                     (x.ProductId == null || x.ProductId == product.Id) && (x.StartsOn == null || x.StartsOn <= now) &&
                     (x.EndsOn == null || x.EndsOn >= now) && (x.MaxRedemptions == null || x.RedemptionCount < x.MaxRedemptions), ct);
                 if (discount is null) return Results.BadRequest(new { message = "The discount code is invalid or unavailable." });
+            }
+            else if (order.AthleteId is Guid siblingAthleteId)
+            {
+                var now = DateTime.UtcNow;
+                var priorAthletes = await db.PurchaseOrders.Where(x => x.FamilyId == familyId && x.AthleteId != null &&
+                        x.Status == PurchaseStatus.Completed && x.AthleteId != siblingAthleteId)
+                    .GroupBy(x => x.AthleteId).Select(x => new { AthleteId = x.Key, FirstPurchase = x.Min(y => y.CompletedOn) })
+                    .OrderBy(x => x.FirstPurchase).Select(x => x.AthleteId).ToListAsync(ct);
+                var existingPosition = await db.PurchaseOrders.Where(x => x.FamilyId == familyId && x.AthleteId == siblingAthleteId && x.Status == PurchaseStatus.Completed)
+                    .Select(x => (DateTime?)x.CompletedOn).MinAsync(ct);
+                var siblingPosition = existingPosition is null ? priorAthletes.Count + 1 :
+                    1 + await db.PurchaseOrders.Where(x => x.FamilyId == familyId && x.AthleteId != siblingAthleteId && x.AthleteId != null &&
+                        x.Status == PurchaseStatus.Completed && x.CompletedOn < existingPosition).Select(x => x.AthleteId).Distinct().CountAsync(ct);
+                discount = await db.DiscountCodes.Where(x => x.IsAutomaticSibling && x.IsActive &&
+                        (x.ProductId == null || x.ProductId == product.Id) && (x.StartsOn == null || x.StartsOn <= now) &&
+                        (x.EndsOn == null || x.EndsOn >= now) && (x.MaxRedemptions == null || x.RedemptionCount < x.MaxRedemptions) &&
+                        siblingPosition >= x.SiblingStartPosition && siblingPosition <= x.SiblingEndPosition)
+                    .OrderByDescending(x => x.DiscountType == DiscountType.Percentage ? product.Price * x.Value / 100m : x.Value).FirstOrDefaultAsync(ct);
+            }
+            if (discount is not null)
+            {
                 order.DiscountCodeId = discount.Id; order.DiscountCodeSnapshot = discount.Code;
                 order.DiscountAmount = discount.DiscountType == DiscountType.Percentage
                     ? decimal.Round(product.Price * discount.Value / 100m, 2) : Math.Min(product.Price, discount.Value);

@@ -66,6 +66,9 @@ Check(portalSource.Contains("Where(g => g.Id == guardianId"),
     "family lookup is scoped from the authenticated guardian claim");
 Check(portalSource.Contains("MapPut(\"/account/email\"") && portalSource.Contains("VerifyHashedPassword") && portalSource.Contains("user.Guardian.Email = user.Email"),
     "parent email changes require the current password and synchronize the guardian record");
+Check(portalSource.Contains("MapPost(\"/athletes\"") && portalSource.Contains("x.Id == guardianId && x.Family.IsActive") &&
+      portalSource.Contains("UsaWrestlingVerificationStatus.Pending"),
+    "parents can add athletes only to their authenticated family with a pending USA Wrestling submission");
 var familySource = Source("backend/LegacyOS.Api/Features/Families/FamilyEndpoints.cs");
 Check(familySource.Contains("/{id:guid}/archive") && familySource.Contains("token.RevokedOn = DateTime.UtcNow") && familySource.Contains("user.IsActive = !request.Archived"),
     "archiving preserves family data while disabling accounts and revoking sessions");
@@ -78,6 +81,11 @@ Check(portalSource.Contains("NormalizeEmail(invitation.Guardian.Email) != normal
 var purchaseSource = Source("backend/LegacyOS.Api/Features/Purchases/PurchaseEndpoints.cs");
 Check(purchaseSource.Contains("RequireAuthorization(\"CustomerOnly\")"), "purchase endpoints require the customer policy");
 Check(purchaseSource.Contains("x.Id == athleteId && x.FamilyId == familyId"), "checkout athlete ownership is enforced");
+Check(purchaseSource.Contains("Sign every required waiver for this athlete before purchasing") &&
+      purchaseSource.Contains("Enter the athlete's USA Wrestling membership number before purchasing"),
+    "new athletes must submit USA Wrestling membership and sign required waivers before purchase");
+Check(purchaseSource.Contains("IsAutomaticSibling") && purchaseSource.Contains("siblingPosition >= x.SiblingStartPosition"),
+    "eligible sibling discounts are applied automatically based on distinct athlete purchase order");
 Check(purchaseSource.Contains("Legacy membership plans are no longer available") &&
       purchaseSource.Contains("return Results.Ok(new { products })"),
     "customer catalog and checkout expose products rather than legacy memberships");

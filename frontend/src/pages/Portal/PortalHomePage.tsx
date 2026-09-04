@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Card, CardContent, Checkbox, CircularProgress, Container, Divider, FormControl, FormControlLabel, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Checkbox, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, FormControlLabel, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { http } from '../../api/http';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -46,7 +46,7 @@ export function PortalHomePage() {
       <Typography variant="h5">{profile.family.familyName}</Typography>
       <Typography color="text.secondary" sx={{ mt: 1 }}>{profile.guardian.firstName} {profile.guardian.lastName} · {profile.guardian.email}</Typography>
       <Divider sx={{ my: 3 }} />
-      <Typography variant="h6" sx={{ mb: 2 }}>Athletes</Typography>
+      <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 2 }}><Typography variant="h6">Athletes</Typography><AddAthleteButton /></Stack>
       <Stack spacing={3}>{profile.family.athletes.map(a => <Box key={a.id}><Typography sx={{ fontWeight: 700 }}>{a.firstName} {a.lastName}</Typography><Typography color="text.secondary">Date of birth: {a.dateOfBirth}{a.gender ? ` · ${a.gender}` : ''}</Typography>{a.sessionPackages.map(p => <Typography key={p.id} color="text.secondary">{p.productName}: {p.isUnlimited ? 'Unlimited' : `${p.sessionsRemaining} sessions remaining`} · expires {new Date(p.expiresOn).toLocaleDateString()}</Typography>)}<UsaWrestlingEntry athlete={a} /></Box>)}</Stack>
       {profile.family.athletes.length === 0 && <Typography color="text.secondary">No athletes are associated with this family.</Typography>}
     </CardContent></Card>
@@ -55,6 +55,7 @@ export function PortalHomePage() {
     <Card><CardContent sx={{ p: 4 }}><Typography variant="h5" sx={{ mb: 3 }}>Products</Typography>
       <FormControl fullWidth sx={{ mb: 3 }}><InputLabel id="athlete-label">Athlete</InputLabel><Select labelId="athlete-label" label="Athlete" value={athleteId} onChange={e => setAthleteId(e.target.value)}>{profile.family.athletes.map(a => <MenuItem key={a.id} value={a.id}>{a.firstName} {a.lastName}</MenuItem>)}</Select></FormControl>
       <TextField fullWidth label="Discount code (optional)" value={discountCode} onChange={e => setDiscountCode(e.target.value.toUpperCase())} sx={{ mb: 3 }}/>
+      <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>Any eligible sibling discount is applied automatically when no manual code is entered.</Typography>
       <Stack spacing={2}>{catalog.products.map(product => <Box key={product.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box><Typography sx={{ fontWeight: 700 }}>{product.name}</Typography><Typography color="text.secondary">{product.description ?? ''} · ${product.price.toFixed(2)}{product.installmentCount ? ` total · ${product.installmentCount} payments of $${(product.price / product.installmentCount).toFixed(2)}${product.billingDayOfMonth ? ` on day ${product.billingDayOfMonth}` : ' monthly from purchase'}` : ''}{product.isSessionPackage ? ` · ${product.hasUnlimitedSessions ? 'Unlimited sessions' : `${product.sessionCount} sessions`} · valid ${product.validityDays} days` : ''}</Typography></Box>
         <Button variant="outlined" disabled={checkoutId === product.id || (product.isSessionPackage && !athleteId)} onClick={() => checkout({ productId: product.id, athleteId: product.isSessionPackage ? athleteId : undefined, discountCode: discountCode.trim() || undefined }, product.id)}>Buy</Button>
@@ -65,6 +66,13 @@ export function PortalHomePage() {
     </Stack></CardContent></Card>}
     </Stack>}
   </Container>;
+}
+
+function AddAthleteButton() {
+  const [open, setOpen] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState('');
+  const [form, setForm] = useState({ firstName: '', lastName: '', dateOfBirth: '', gender: '', usaWrestlingMembershipNumber: '' });
+  async function save() { setSaving(true); setError(''); try { await http.post('/portal/athletes', form); window.location.reload(); } catch (saveError) { const data = axios.isAxiosError(saveError) ? saveError.response?.data : null; setError(data?.errors?.athlete?.[0] ?? data?.message ?? 'Unable to add athlete.'); setSaving(false); } }
+  return <><Button variant="outlined" onClick={() => setOpen(true)}>Add athlete</Button><Dialog open={open} onClose={() => setOpen(false)} fullWidth><DialogTitle>Add athlete</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}>{error && <Alert severity="error">{error}</Alert>}<TextField required label="First name" value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}/><TextField required label="Last name" value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}/><TextField required type="date" label="Date of birth" slotProps={{ inputLabel: { shrink: true } }} value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })}/><TextField label="Gender (optional)" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}/><TextField required label="USA Wrestling membership number" value={form.usaWrestlingMembershipNumber} onChange={e => setForm({ ...form, usaWrestlingMembershipNumber: e.target.value })}/><Alert severity="info">After adding this athlete, sign each required waiver before purchasing a package.</Alert></Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Cancel</Button><Button variant="contained" disabled={saving || !form.firstName.trim() || !form.lastName.trim() || !form.dateOfBirth || !form.usaWrestlingMembershipNumber.trim()} onClick={save}>Add athlete</Button></DialogActions></Dialog></>;
 }
 
 function AccountSettings({ currentEmail, onChanged }: { currentEmail: string; onChanged: (email: string) => void }) {

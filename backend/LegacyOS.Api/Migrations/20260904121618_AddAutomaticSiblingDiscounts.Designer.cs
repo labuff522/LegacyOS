@@ -3,6 +3,7 @@ using System;
 using LegacyOS.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LegacyOS.Api.Migrations
 {
     [DbContext(typeof(LegacyOSDbContext))]
-    partial class LegacyOSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260904121618_AddAutomaticSiblingDiscounts")]
+    partial class AddAutomaticSiblingDiscounts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
