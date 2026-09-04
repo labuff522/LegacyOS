@@ -21,7 +21,7 @@ Customer catalog and checkout endpoints are under `/portal/purchases`. Products 
 - `Stripe__WebhookSecret`
 - `Frontend__BaseUrl`
 
-Register the public `POST /stripe/webhook` URL in Stripe for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, and `checkout.session.expired`. Use the endpoint-specific signing secret. Prices are derived server-side from LegacyOS records; the browser never supplies an amount.
+Register the public `POST /stripe/webhook` URL in Stripe for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `invoice.paid`, and `invoice.payment_failed`. Use the endpoint-specific signing secret. Prices are derived server-side from DenOS records; the browser never supplies an amount.
 
 ## USA Wrestling membership verification
 

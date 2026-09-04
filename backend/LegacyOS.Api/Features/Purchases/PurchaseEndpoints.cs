@@ -26,7 +26,7 @@ public static class PurchaseEndpoints
         if (familyId is null) return Results.Forbid();
         var products = await db.Products.Where(x => x.IsActive)
             .Select(x => new { x.Id, x.Name, x.Description, x.Price, productType = x.ProductType.ToString(),
-                x.IsSessionPackage, x.HasUnlimitedSessions, x.SessionCount, x.ValidityDays }).ToListAsync();
+                x.IsSessionPackage, x.HasUnlimitedSessions, x.SessionCount, x.ValidityDays, x.InstallmentCount, x.BillingDayOfMonth }).ToListAsync();
         return Results.Ok(new { products });
     }
 
@@ -75,8 +75,12 @@ public static class PurchaseEndpoints
             }
             else if (request.AthleteId is not null) return Results.BadRequest(new { message = "This product does not require an athlete." });
             order.Kind = PurchaseKind.Product; order.ProductId = product.Id; order.Amount = product.Price; order.OriginalAmount = product.Price; itemName = product.Name;
+            order.InstallmentCount = product.InstallmentCount ?? 1;
+            order.BillingDayOfMonth = product.BillingDayOfMonth;
+            order.InstallmentAmount = decimal.Round(order.Amount / order.InstallmentCount, 2);
             order.ItemSnapshotJson = JsonSerializer.Serialize(new { product.Id, product.Name, product.ShortName, product.Description,
-                product.ProductType, product.Price, product.IsSessionPackage, product.HasUnlimitedSessions, product.SessionCount, product.ValidityDays });
+                product.ProductType, product.Price, product.IsSessionPackage, product.HasUnlimitedSessions, product.SessionCount, product.ValidityDays,
+                product.InstallmentCount, product.BillingDayOfMonth });
             if (!string.IsNullOrWhiteSpace(request.DiscountCode))
             {
                 var now = DateTime.UtcNow; var normalizedCode = request.DiscountCode.Trim().ToUpperInvariant();
@@ -88,6 +92,9 @@ public static class PurchaseEndpoints
                 order.DiscountAmount = discount.DiscountType == DiscountType.Percentage
                     ? decimal.Round(product.Price * discount.Value / 100m, 2) : Math.Min(product.Price, discount.Value);
                 order.Amount = Math.Max(0, product.Price - order.DiscountAmount);
+                if (order.InstallmentCount > 1 && decimal.Round(order.Amount * 100m) % order.InstallmentCount != 0)
+                    return Results.BadRequest(new { message = "This discount cannot be divided evenly across the configured payments." });
+                order.InstallmentAmount = decimal.Round(order.Amount / order.InstallmentCount, 2);
             }
         }
         else return Results.BadRequest(new { message = "Choose one membership plan and athlete, or one product." });
@@ -116,7 +123,7 @@ public static class PurchaseEndpoints
         return Results.Ok(orders);
     }
 
-    private static async Task<IResult> WebhookAsync(HttpRequest request, IConfiguration config, LegacyOSDbContext db)
+    private static async Task<IResult> WebhookAsync(HttpRequest request, IConfiguration config, LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
     {
         using var reader = new StreamReader(request.Body);
         var payload = await reader.ReadToEndAsync();
@@ -126,6 +133,19 @@ public static class PurchaseEndpoints
         using var document = JsonDocument.Parse(payload);
         var root = document.RootElement; var type = root.GetProperty("type").GetString();
         var session = root.GetProperty("data").GetProperty("object");
+        if (type is "invoice.paid" or "invoice.payment_failed")
+        {
+            var subscriptionId = StringProperty(session, "subscription");
+            var installmentOrder = await db.PurchaseOrders.SingleOrDefaultAsync(x => x.StripeSubscriptionId == subscriptionId);
+            if (installmentOrder is null) return Results.Ok();
+            installmentOrder.IsPaymentCurrent = type == "invoice.paid";
+            if (type == "invoice.paid")
+            {
+                installmentOrder.Status = PurchaseStatus.Completed; installmentOrder.CompletedOn ??= DateTime.UtcNow;
+                await GrantPackageAsync(installmentOrder, db);
+            }
+            await db.SaveChangesAsync(); return Results.Ok();
+        }
         if (!session.TryGetProperty("metadata", out var metadata) || !metadata.TryGetProperty("purchase_order_id", out var orderValue) ||
             !Guid.TryParse(orderValue.GetString(), out var orderId)) return Results.Ok();
         var order = await db.PurchaseOrders.Include(x => x.Enrollment).Include(x => x.DiscountCode).SingleOrDefaultAsync(x => x.Id == orderId);
@@ -134,33 +154,15 @@ public static class PurchaseEndpoints
         if (type is "checkout.session.completed" or "checkout.session.async_payment_succeeded")
         {
             var paymentStatus = session.TryGetProperty("payment_status", out var ps) ? ps.GetString() : null;
-            if (paymentStatus is "paid" or "no_payment_required")
+            order.StripeCustomerId = StringProperty(session, "customer"); order.StripeSubscriptionId = StringProperty(session, "subscription");
+            await stripe.SetFiniteEndAsync(order, ct);
+            if (paymentStatus == "paid" || (paymentStatus == "no_payment_required" && order.BillingDayOfMonth is null))
             {
                 order.Status = PurchaseStatus.Completed; order.CompletedOn ??= DateTime.UtcNow;
-                order.StripeCustomerId = StringProperty(session, "customer"); order.StripeSubscriptionId = StringProperty(session, "subscription");
                 if (order.DiscountCode is not null && !order.DiscountRedemptionRecorded)
                 { order.DiscountCode.RedemptionCount++; order.DiscountRedemptionRecorded = true; }
                 if (order.Enrollment is not null) { order.Enrollment.IsActive = true; order.Enrollment.StartDate = DateTime.UtcNow; }
-                if (order.ProductId is Guid productId && order.AthleteId is Guid athleteId &&
-                    !await db.SessionCreditLots.AnyAsync(x => x.PurchaseOrderId == order.Id))
-                {
-                    var product = await db.Products.SingleAsync(x => x.Id == productId);
-                    if (product.IsSessionPackage && product.ValidityDays is int validityDays)
-                    {
-                        var grantedOn = order.CompletedOn.Value;
-                        var lot = new SessionCreditLot { Id = Guid.NewGuid(), AthleteId = athleteId, ProductId = product.Id,
-                            PurchaseOrderId = order.Id, IsUnlimited = product.HasUnlimitedSessions,
-                            GrantSource = SessionGrantSource.Stripe,
-                            SessionsGranted = product.HasUnlimitedSessions ? null : product.SessionCount,
-                            SessionsRemaining = product.HasUnlimitedSessions ? null : product.SessionCount,
-                            GrantedOn = grantedOn, ExpiresOn = grantedOn.AddDays(validityDays), IsActive = true };
-                        db.SessionCreditLots.Add(lot);
-                        db.SessionLedgerEntries.Add(new SessionLedgerEntry { Id = Guid.NewGuid(), SessionCreditLot = lot,
-                            AthleteId = athleteId, EntryType = SessionLedgerEntryType.Grant,
-                            SessionChange = product.HasUnlimitedSessions ? 0 : product.SessionCount!.Value,
-                            Note = $"Granted by completed purchase {order.Id}." });
-                    }
-                }
+                await GrantPackageAsync(order, db);
             }
         }
         else if (type == "checkout.session.expired") order.Status = PurchaseStatus.Expired;
@@ -175,6 +177,25 @@ public static class PurchaseEndpoints
         Guid.TryParse(principal.FindFirstValue("guardian_id"), out var guardianId)
             ? await db.Guardians.Where(x => x.Id == guardianId && x.Family.IsActive).Select(x => (Guid?)x.FamilyId).SingleOrDefaultAsync()
             : null;
+
+    private static async Task GrantPackageAsync(PurchaseOrder order, LegacyOSDbContext db)
+    {
+        if (order.ProductId is not Guid productId || order.AthleteId is not Guid athleteId ||
+            await db.SessionCreditLots.AnyAsync(x => x.PurchaseOrderId == order.Id)) return;
+        var product = await db.Products.SingleAsync(x => x.Id == productId);
+        if (!product.IsSessionPackage || product.ValidityDays is not int validityDays) return;
+        var grantedOn = order.CompletedOn ?? DateTime.UtcNow;
+        var lot = new SessionCreditLot { Id = Guid.NewGuid(), AthleteId = athleteId, ProductId = product.Id,
+            PurchaseOrderId = order.Id, IsUnlimited = product.HasUnlimitedSessions, GrantSource = SessionGrantSource.Stripe,
+            SessionsGranted = product.HasUnlimitedSessions ? null : product.SessionCount,
+            SessionsRemaining = product.HasUnlimitedSessions ? null : product.SessionCount,
+            GrantedOn = grantedOn, ExpiresOn = grantedOn.AddDays(validityDays), IsActive = true };
+        db.SessionCreditLots.Add(lot);
+        db.SessionLedgerEntries.Add(new SessionLedgerEntry { Id = Guid.NewGuid(), SessionCreditLot = lot,
+            AthleteId = athleteId, EntryType = SessionLedgerEntryType.Grant,
+            SessionChange = product.HasUnlimitedSessions ? 0 : product.SessionCount!.Value,
+            Note = $"Granted by completed purchase {order.Id}." });
+    }
 }
 
 public record CheckoutRequest(Guid? MembershipPlanId, Guid? ProductId, Guid? AthleteId, string? DiscountCode = null);

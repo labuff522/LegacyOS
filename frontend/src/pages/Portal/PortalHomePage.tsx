@@ -9,7 +9,7 @@ type PortalProfile = {
   guardian: { id: string; firstName: string; lastName: string; email: string };
   family: { id: string; familyName: string; athletes: { id: string; firstName: string; lastName: string; dateOfBirth: string; gender?: string; usaWrestling?: { membershipNumber: string; status: string; expiresOn?: string }; sessionPackages: { id: string; productName: string; isUnlimited: boolean; sessionsRemaining?: number; expiresOn: string }[] }[] };
 };
-type Catalog = { products: { id: string; name: string; description?: string; price: number; isSessionPackage: boolean; hasUnlimitedSessions: boolean; sessionCount?: number; validityDays?: number }[] };
+type Catalog = { products: { id: string; name: string; description?: string; price: number; isSessionPackage: boolean; hasUnlimitedSessions: boolean; sessionCount?: number; validityDays?: number; installmentCount?: number; billingDayOfMonth?: number }[] };
 type Order = { id: string; itemName: string; status: string; amount: number; currency: string; createdOn: string };
 
 export function PortalHomePage() {
@@ -55,7 +55,7 @@ export function PortalHomePage() {
       <FormControl fullWidth sx={{ mb: 3 }}><InputLabel id="athlete-label">Athlete</InputLabel><Select labelId="athlete-label" label="Athlete" value={athleteId} onChange={e => setAthleteId(e.target.value)}>{profile.family.athletes.map(a => <MenuItem key={a.id} value={a.id}>{a.firstName} {a.lastName}</MenuItem>)}</Select></FormControl>
       <TextField fullWidth label="Discount code (optional)" value={discountCode} onChange={e => setDiscountCode(e.target.value.toUpperCase())} sx={{ mb: 3 }}/>
       <Stack spacing={2}>{catalog.products.map(product => <Box key={product.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box><Typography sx={{ fontWeight: 700 }}>{product.name}</Typography><Typography color="text.secondary">{product.description ?? ''} · ${product.price.toFixed(2)}{product.isSessionPackage ? ` · ${product.hasUnlimitedSessions ? 'Unlimited sessions' : `${product.sessionCount} sessions`} · valid ${product.validityDays} days` : ''}</Typography></Box>
+        <Box><Typography sx={{ fontWeight: 700 }}>{product.name}</Typography><Typography color="text.secondary">{product.description ?? ''} · ${product.price.toFixed(2)}{product.installmentCount ? ` total · ${product.installmentCount} payments of $${(product.price / product.installmentCount).toFixed(2)}${product.billingDayOfMonth ? ` on day ${product.billingDayOfMonth}` : ' monthly from purchase'}` : ''}{product.isSessionPackage ? ` · ${product.hasUnlimitedSessions ? 'Unlimited sessions' : `${product.sessionCount} sessions`} · valid ${product.validityDays} days` : ''}</Typography></Box>
         <Button variant="outlined" disabled={checkoutId === product.id || (product.isSessionPackage && !athleteId)} onClick={() => checkout({ productId: product.id, athleteId: product.isSessionPackage ? athleteId : undefined, discountCode: discountCode.trim() || undefined }, product.id)}>Buy</Button>
       </Box>)}</Stack>
     </CardContent></Card>

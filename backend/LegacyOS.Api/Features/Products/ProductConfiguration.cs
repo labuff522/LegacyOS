@@ -21,6 +21,8 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.HasUnlimitedSessions).HasColumnName("has_unlimited_sessions");
         builder.Property(x => x.SessionCount).HasColumnName("session_count");
         builder.Property(x => x.ValidityDays).HasColumnName("validity_days");
+        builder.Property(x => x.InstallmentCount).HasColumnName("installment_count");
+        builder.Property(x => x.BillingDayOfMonth).HasColumnName("billing_day_of_month");
         builder.Property(x => x.IsActive).HasColumnName("is_active");
         builder.Property(x => x.CreatedOn).HasColumnName("created_on");
     }

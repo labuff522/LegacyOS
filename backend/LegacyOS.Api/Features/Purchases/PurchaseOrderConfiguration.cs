@@ -33,6 +33,10 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
         b.Property(x => x.StripeSubscriptionId).HasColumnName("stripe_subscription_id").HasMaxLength(255);
         b.Property(x => x.CreatedOn).HasColumnName("created_on");
         b.Property(x => x.CompletedOn).HasColumnName("completed_on");
+        b.Property(x => x.InstallmentCount).HasColumnName("installment_count");
+        b.Property(x => x.InstallmentAmount).HasColumnName("installment_amount").HasPrecision(10, 2);
+        b.Property(x => x.IsPaymentCurrent).HasColumnName("is_payment_current");
+        b.Property(x => x.BillingDayOfMonth).HasColumnName("billing_day_of_month");
         b.HasIndex(x => x.StripeCheckoutSessionId).IsUnique();
         b.HasOne<PortalUser>().WithMany().HasForeignKey(x => x.PortalUserId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Family).WithMany().HasForeignKey(x => x.FamilyId).OnDelete(DeleteBehavior.Restrict);

@@ -25,6 +25,7 @@ public static class ProductEndpoints
                     p.HasUnlimitedSessions,
                     p.SessionCount,
                     p.ValidityDays,
+                    p.InstallmentCount, p.BillingDayOfMonth,
                     p.IsActive
                 })
                 .ToListAsync();
@@ -34,7 +35,7 @@ public static class ProductEndpoints
 
         group.MapPost("/", async (CreateProductRequest request, LegacyOSDbContext db) =>
         {
-            var validation = Validate(request.IsSessionPackage, request.HasUnlimitedSessions, request.SessionCount, request.ValidityDays);
+            var validation = Validate(request.IsSessionPackage, request.HasUnlimitedSessions, request.SessionCount, request.ValidityDays, request.Price, request.InstallmentCount, request.BillingDayOfMonth);
             if (validation is not null) return validation;
             var product = new Product
             {
@@ -48,6 +49,8 @@ public static class ProductEndpoints
                 HasUnlimitedSessions = request.HasUnlimitedSessions,
                 SessionCount = request.HasUnlimitedSessions ? null : request.SessionCount,
                 ValidityDays = request.IsSessionPackage ? request.ValidityDays : null,
+                InstallmentCount = request.InstallmentCount is > 1 ? request.InstallmentCount : null,
+                BillingDayOfMonth = request.InstallmentCount is > 1 ? request.BillingDayOfMonth : null,
                 IsActive = true,
                 CreatedOn = DateTime.UtcNow
             };
@@ -67,13 +70,14 @@ public static class ProductEndpoints
                 product.HasUnlimitedSessions,
                 product.SessionCount,
                 product.ValidityDays,
+                product.InstallmentCount, product.BillingDayOfMonth,
                 product.IsActive
             });
         });
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateProductRequest request, LegacyOSDbContext db) =>
         {
-            var validation = Validate(request.IsSessionPackage, request.HasUnlimitedSessions, request.SessionCount, request.ValidityDays);
+            var validation = Validate(request.IsSessionPackage, request.HasUnlimitedSessions, request.SessionCount, request.ValidityDays, request.Price, request.InstallmentCount, request.BillingDayOfMonth);
             if (validation is not null) return validation;
             var product = await db.Products.SingleOrDefaultAsync(x => x.Id == id);
             if (product is null) return Results.NotFound();
@@ -83,6 +87,8 @@ public static class ProductEndpoints
             product.HasUnlimitedSessions = request.IsSessionPackage && request.HasUnlimitedSessions;
             product.SessionCount = product.HasUnlimitedSessions || !product.IsSessionPackage ? null : request.SessionCount;
             product.ValidityDays = product.IsSessionPackage ? request.ValidityDays : null;
+            product.InstallmentCount = request.InstallmentCount is > 1 ? request.InstallmentCount : null;
+            product.BillingDayOfMonth = product.InstallmentCount is not null ? request.BillingDayOfMonth : null;
             product.IsActive = request.IsActive;
             await db.SaveChangesAsync(); return Results.NoContent();
         });
@@ -90,8 +96,10 @@ public static class ProductEndpoints
         return group;
     }
 
-    private static IResult? Validate(bool isSessionPackage, bool unlimited, int? count, int? validityDays)
+    private static IResult? Validate(bool isSessionPackage, bool unlimited, int? count, int? validityDays, decimal price, int? installments, int? billingDay)
     {
+        if (installments is > 1 && (installments > 60 || decimal.Round(price * 100m) % installments != 0)) return Results.BadRequest(new { message = "The total must divide evenly into 2–60 cent-exact payments." });
+        if (billingDay is not null and (< 1 or > 28)) return Results.BadRequest(new { message = "Billing day must be between 1 and 28." });
         if (!isSessionPackage) return null;
         if (validityDays is null or <= 0) return Results.BadRequest(new { message = "Session packages require a positive validity period." });
         if (!unlimited && count is null or <= 0) return Results.BadRequest(new { message = "Limited packages require a positive session count." });
@@ -114,6 +122,8 @@ public class CreateProductRequest
     public bool HasUnlimitedSessions { get; set; }
     public int? SessionCount { get; set; }
     public int? ValidityDays { get; set; }
+    public int? InstallmentCount { get; set; }
+    public int? BillingDayOfMonth { get; set; }
 }
 
 public class UpdateProductRequest : CreateProductRequest { public bool IsActive { get; set; } = true; }

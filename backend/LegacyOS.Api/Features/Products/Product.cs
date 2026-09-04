@@ -21,6 +21,8 @@ public class Product
     public int? SessionCount { get; set; }
 
     public int? ValidityDays { get; set; }
+    public int? InstallmentCount { get; set; }
+    public int? BillingDayOfMonth { get; set; }
 
     public bool IsActive { get; set; } = true;
 

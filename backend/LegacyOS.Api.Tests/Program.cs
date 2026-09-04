@@ -75,7 +75,7 @@ Check(purchaseSource.Contains("Legacy membership plans are no longer available")
     "customer catalog and checkout expose products rather than legacy memberships");
 Check(purchaseSource.Contains("StripeWebhookVerifier.Verify"),
     "payment fulfillment requires a verified Stripe webhook");
-Check(purchaseSource.Contains("!await db.SessionCreditLots.AnyAsync") &&
+Check(purchaseSource.Contains("await db.SessionCreditLots.AnyAsync") &&
       purchaseSource.Contains("PurchaseOrderId = order.Id") && purchaseSource.Contains("ExpiresOn = grantedOn.AddDays"),
     "verified Stripe payment grants one idempotent expiring session lot");
 Check(purchaseSource.Contains("x.Id == packageAthleteId && x.FamilyId == familyId"),
@@ -92,6 +92,8 @@ Check(sessionsSource.Contains("missingWaivers > 0") && sessionsSource.Contains("
     "unsigned required waivers block check-in unless staff supplies an audited override reason");
 Check(sessionsSource.Contains("UsaWrestlingVerifications") && sessionsSource.Contains("MembershipNumber"),
     "the staff check-in roster includes USA Wrestling submission and validation status");
+Check(sessionsSource.Contains("USA Wrestling membership not current") && sessionsSource.Contains("payment plan overdue"),
+    "non-current USA membership and overdue installments block check-in with audited override");
 var waiverSource = Source("backend/LegacyOS.Api/Features/Waivers/WaiverEndpoints.cs");
 Check(waiverSource.Contains("RequireAuthorization(\"StaffOnly\")") && waiverSource.Contains("RequireAuthorization(\"CustomerOnly\")"),
     "waiver administration is staff-only and guardian signing requires customer authentication");
@@ -109,6 +111,8 @@ Check(purchaseSource.Contains("FamilySnapshotJson = JsonSerializer.Serialize") &
     "orders retain immutable family, athlete, and item snapshots");
 Check(purchaseSource.Contains("DiscountCodeSnapshot") && purchaseSource.Contains("DiscountRedemptionRecorded"),
     "orders preserve applied discounts and count completed redemptions once");
+Check(purchaseSource.Contains("invoice.payment_failed") && purchaseSource.Contains("IsPaymentCurrent"),
+    "Stripe invoice webhooks suspend and restore payment-plan eligibility");
 var selfRegistrationSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
 Check(selfRegistrationSource.Contains("MapPost(\"/self-register\"") &&
       selfRegistrationSource.Contains("new Family") && selfRegistrationSource.Contains("new PortalUser"),

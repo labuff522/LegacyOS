@@ -38,6 +38,7 @@ public static class SessionEndpoints
                 Packages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive)
                     .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                         l.IsUnlimited, l.SessionsRemaining, l.GrantedOn, l.ExpiresOn,
+                        isPaymentCurrent = l.PurchaseOrder == null || l.PurchaseOrder.IsPaymentCurrent,
                         isExpired = l.ExpiresOn <= now }).ToList()
             }).ToListAsync();
         return Results.Ok(athletes);
@@ -56,9 +57,17 @@ public static class SessionEndpoints
         var now = DateTime.UtcNow;
         var missingWaivers = await db.WaiverTemplates.CountAsync(w => w.IsActive && w.IsRequired &&
             !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == athleteId && s.ExpiresOn > now));
-        if (missingWaivers > 0 && !request.OverrideEligibility)
-            return Results.Conflict(new { message = $"Check-in blocked: {missingWaivers} required waiver(s) are unsigned." });
-        if (missingWaivers > 0 && string.IsNullOrWhiteSpace(request.OverrideReason))
+        var today = DateOnly.FromDateTime(now);
+        var usaCurrent = await db.UsaWrestlingVerifications.AnyAsync(v => v.AthleteId == athleteId &&
+            v.Status == LegacyOS.Api.Features.UsaWrestling.UsaWrestlingVerificationStatus.Current && (v.ExpiresOn == null || v.ExpiresOn >= today));
+        var paymentCurrent = !await db.SessionCreditLots.AnyAsync(l => l.AthleteId == athleteId && l.IsActive && l.PurchaseOrder != null && !l.PurchaseOrder.IsPaymentCurrent);
+        var eligibilityIssues = new List<string>();
+        if (missingWaivers > 0) eligibilityIssues.Add($"{missingWaivers} required waiver(s) unsigned");
+        if (!usaCurrent) eligibilityIssues.Add("USA Wrestling membership not current");
+        if (!paymentCurrent) eligibilityIssues.Add("payment plan overdue");
+        if (eligibilityIssues.Count > 0 && !request.OverrideEligibility)
+            return Results.Conflict(new { message = $"Check-in blocked: {string.Join(", ", eligibilityIssues)}." });
+        if (eligibilityIssues.Count > 0 && string.IsNullOrWhiteSpace(request.OverrideReason))
             return Results.BadRequest(new { message = "A staff override reason is required." });
         var lots = await db.SessionCreditLots.Include(x => x.Product)
             .Where(x => x.AthleteId == athleteId && x.IsActive && x.ExpiresOn > now &&
@@ -70,7 +79,7 @@ public static class SessionEndpoints
         db.SessionLedgerEntries.Add(new SessionLedgerEntry { Id = Guid.NewGuid(), SessionCreditLotId = lot.Id,
             AthleteId = athleteId, StaffPortalUserId = staffId, EntryType = SessionLedgerEntryType.CheckIn,
             SessionChange = lot.IsUnlimited ? 0 : -1,
-            Note = missingWaivers > 0 ? $"ELIGIBILITY OVERRIDE: {request.OverrideReason?.Trim()}. {request.Note?.Trim()}" : request.Note?.Trim(), CreatedOn = now });
+            Note = eligibilityIssues.Count > 0 ? $"ELIGIBILITY OVERRIDE ({string.Join(", ", eligibilityIssues)}): {request.OverrideReason?.Trim()}. {request.Note?.Trim()}" : request.Note?.Trim(), CreatedOn = now });
         await db.SaveChangesAsync();
         return Results.Ok(new { lot.Id, lot.IsUnlimited, lot.SessionsRemaining, lot.ExpiresOn });
     }

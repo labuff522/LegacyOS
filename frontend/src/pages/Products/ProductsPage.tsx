@@ -5,7 +5,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { createProduct, getProducts, updateProduct, type Product, type ProductInput } from '../../api/products';
 
 const blank: ProductInput = { name: '', shortName: '', description: '', productType: 2, price: 0, isSessionPackage: true,
-  hasUnlimitedSessions: false, sessionCount: 10, validityDays: 90, isActive: true };
+  hasUnlimitedSessions: false, sessionCount: 10, validityDays: 90, installmentCount: undefined, billingDayOfMonth: undefined, isActive: true };
 
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]); const [editing, setEditing] = useState<Product | null | undefined>();
@@ -17,7 +17,7 @@ export function ProductsPage() {
   return <><PageHeader title="Products & session packages" subtitle="Create prices, session allowances, and purchase expiration rules." />
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}<Button variant="contained" onClick={() => open()}>Create product</Button>
     <Stack spacing={2} sx={{ mt: 3 }}>{products.map(p => <Card key={p.id}><CardContent sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
-      <div><Typography variant="h6">{p.name}</Typography><Typography color="text.secondary">${p.price.toFixed(2)} · {p.isSessionPackage ? `${p.hasUnlimitedSessions ? 'Unlimited sessions' : `${p.sessionCount} sessions`} · valid ${p.validityDays} days` : p.productType} · {p.isActive ? 'Active' : 'Inactive'}</Typography><Typography>{p.description}</Typography></div>
+      <div><Typography variant="h6">{p.name}</Typography><Typography color="text.secondary">${p.price.toFixed(2)} · {p.installmentCount ? `${p.installmentCount} payments of $${(p.price / p.installmentCount).toFixed(2)}${p.billingDayOfMonth ? ` on day ${p.billingDayOfMonth}` : ' monthly from purchase'}` : 'Pay in full'} · {p.isSessionPackage ? `${p.hasUnlimitedSessions ? 'Unlimited sessions' : `${p.sessionCount} sessions`} · valid ${p.validityDays} days` : p.productType} · {p.isActive ? 'Active' : 'Inactive'}</Typography><Typography>{p.description}</Typography></div>
       <Button onClick={() => open(p)}>Manage</Button></CardContent></Card>)}</Stack>
     <DiscountManager products={products}/>
     <Dialog open={editing !== undefined} onClose={() => setEditing(undefined)} fullWidth><DialogTitle>{editing ? 'Manage product' : 'Create product'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}>
@@ -25,6 +25,8 @@ export function ProductsPage() {
       <TextField required label="Short name" value={form.shortName} onChange={e => setForm({ ...form, shortName: e.target.value })}/>
       <TextField label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}/>
       <TextField required type="number" label="Price" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })}/>
+      <TextField type="number" label="Number of equal payments (leave blank for pay in full)" value={form.installmentCount ?? ''} onChange={e => setForm({ ...form, installmentCount: e.target.value ? Number(e.target.value) : undefined })}/>
+      {!!form.installmentCount && form.installmentCount > 1 && <TextField type="number" label="Fixed billing day, 1–28 (leave blank for purchase-date monthly)" value={form.billingDayOfMonth ?? ''} onChange={e => setForm({ ...form, billingDayOfMonth: e.target.value ? Number(e.target.value) : undefined })}/>}
       <FormControlLabel control={<Checkbox checked={form.isSessionPackage} onChange={e => setForm({ ...form, isSessionPackage: e.target.checked })}/>} label="Session package" />
       {form.isSessionPackage && <><FormControlLabel control={<Checkbox checked={form.hasUnlimitedSessions} onChange={e => setForm({ ...form, hasUnlimitedSessions: e.target.checked })}/>} label="Unlimited sessions" />
       {!form.hasUnlimitedSessions && <TextField required type="number" label="Number of sessions" value={form.sessionCount ?? ''} onChange={e => setForm({ ...form, sessionCount: Number(e.target.value) })}/>}<TextField required type="number" label="Valid for days" value={form.validityDays ?? ''} onChange={e => setForm({ ...form, validityDays: Number(e.target.value) })}/></>}

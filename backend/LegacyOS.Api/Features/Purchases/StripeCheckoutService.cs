@@ -18,7 +18,7 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));
         var values = new Dictionary<string, string>
         {
-            ["mode"] = order.Kind == PurchaseKind.MembershipPlan ? "subscription" : "payment",
+            ["mode"] = order.InstallmentCount > 1 ? "subscription" : "payment",
             ["success_url"] = $"{frontendUrl}/portal/purchase/success?session_id={{CHECKOUT_SESSION_ID}}",
             ["cancel_url"] = $"{frontendUrl}/portal?checkout=cancelled",
             ["customer_email"] = email,
@@ -26,11 +26,21 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
             ["metadata[purchase_order_id]"] = order.Id.ToString(),
             ["line_items[0][quantity]"] = "1",
             ["line_items[0][price_data][currency]"] = order.Currency,
-            ["line_items[0][price_data][unit_amount]"] = decimal.Round(order.Amount * 100m).ToString("0"),
+            ["line_items[0][price_data][unit_amount]"] = decimal.Round(order.InstallmentAmount * 100m).ToString("0"),
             ["line_items[0][price_data][product_data][name]"] = itemName
         };
-        if (order.Kind == PurchaseKind.MembershipPlan)
+        if (order.InstallmentCount > 1)
+        {
             values["line_items[0][price_data][recurring][interval]"] = "month";
+            var firstCharge = DateTimeOffset.UtcNow;
+            if (order.BillingDayOfMonth is int day)
+            {
+                var now = DateTimeOffset.UtcNow;
+                firstCharge = new DateTimeOffset(now.Year, now.Month, day, 12, 0, 0, TimeSpan.Zero);
+                if (firstCharge <= now.AddHours(48)) firstCharge = firstCharge.AddMonths(1);
+                values["subscription_data[trial_end]"] = firstCharge.ToUnixTimeSeconds().ToString();
+            }
+        }
         request.Content = new FormUrlEncodedContent(values);
 
         using var response = await client.SendAsync(request, ct);
@@ -38,6 +48,23 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Stripe rejected Checkout Session creation ({(int)response.StatusCode}).");
         using var json = JsonDocument.Parse(body);
         return new(json.RootElement.GetProperty("id").GetString()!, json.RootElement.GetProperty("url").GetString()!);
+    }
+
+    public async Task SetFiniteEndAsync(PurchaseOrder order, CancellationToken ct)
+    {
+        if (order.InstallmentCount <= 1 || string.IsNullOrWhiteSpace(order.StripeSubscriptionId)) return;
+        var secret = configuration["Stripe:SecretKey"]!;
+        var firstCharge = new DateTimeOffset(order.CreatedOn, TimeSpan.Zero);
+        if (order.BillingDayOfMonth is int day)
+        {
+            firstCharge = new DateTimeOffset(firstCharge.Year, firstCharge.Month, day, 12, 0, 0, TimeSpan.Zero);
+            if (firstCharge <= order.CreatedOn.AddHours(48)) firstCharge = firstCharge.AddMonths(1);
+        }
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"v1/subscriptions/{Uri.EscapeDataString(order.StripeSubscriptionId)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));
+        request.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["cancel_at"] = firstCharge.AddMonths(order.InstallmentCount).ToUnixTimeSeconds().ToString() });
+        using var response = await client.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Stripe rejected finite payment-plan scheduling ({(int)response.StatusCode}).");
     }
 }
 

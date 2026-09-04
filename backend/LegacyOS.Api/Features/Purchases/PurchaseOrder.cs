@@ -38,6 +38,10 @@ public class PurchaseOrder
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedOn { get; set; }
     public bool DiscountRedemptionRecorded { get; set; }
+    public int InstallmentCount { get; set; } = 1;
+    public decimal InstallmentAmount { get; set; }
+    public bool IsPaymentCurrent { get; set; } = true;
+    public int? BillingDayOfMonth { get; set; }
 }
 
 public enum PurchaseKind { MembershipPlan = 1, Product = 2 }
