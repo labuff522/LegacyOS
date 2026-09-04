@@ -78,6 +78,13 @@ Check(portalSource.Contains("MapPut(\"/account/email\"") && portalSource.Contain
 Check(portalSource.Contains("MapPost(\"/athletes\"") && portalSource.Contains("x.Id == guardianId && x.Family.IsActive") &&
       portalSource.Contains("UsaWrestlingVerificationStatus.Pending"),
     "parents can add athletes only to their authenticated family with a pending USA Wrestling submission");
+var staffAccessSource = Source("backend/LegacyOS.Api/Features/Portal/StaffAccessEndpoints.cs");
+Check(staffAccessSource.Contains("RequireAuthorization(\"StaffOnly\")") && staffAccessSource.Contains("Role == PortalRoles.Staff"),
+    "administrator access management is restricted to staff accounts");
+Check(staffAccessSource.Contains("You cannot deactivate your own account") && staffAccessSource.Contains("At least one active administrator is required"),
+    "administrator access management prevents self-lockout and preserves a final active administrator");
+Check(staffAccessSource.Contains("RevokeTokensAsync") && staffAccessSource.Contains("token.RevokedOn = now"),
+    "administrator deactivation and password resets revoke existing sessions");
 var familySource = Source("backend/LegacyOS.Api/Features/Families/FamilyEndpoints.cs");
 Check(familySource.Contains("/{id:guid}/archive") && familySource.Contains("token.RevokedOn = DateTime.UtcNow") && familySource.Contains("user.IsActive = !request.Archived"),
     "archiving preserves family data while disabling accounts and revoking sessions");

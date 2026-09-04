@@ -14,6 +14,7 @@ import { ProductsPage } from './pages/Products/ProductsPage';
 import { SessionsPage } from './pages/Sessions/SessionsPage';
 import { SelfRegistrationPage } from './pages/Portal/SelfRegistrationPage';
 import { WaiversPage } from './pages/Waivers/WaiversPage';
+import { AccessUsersPage } from './pages/Access/AccessUsersPage';
 
 function RequireRole({ role, children }: { role: 'Customer' | 'Staff'; children: ReactNode }) {
   const { session } = useAuth();
@@ -43,6 +44,7 @@ export function AppRoutes() {
       <Route path="/sessions" element={<StaffPage><SessionsPage /></StaffPage>} />
       <Route path="/waivers" element={<StaffPage><WaiversPage /></StaffPage>} />
       <Route path="/usa-wrestling-verifications" element={<StaffPage><UsaWrestlingVerificationsPage /></StaffPage>} />
+      <Route path="/access" element={<StaffPage><AccessUsersPage /></StaffPage>} />
       <Route path="*" element={<Navigate to="/portal/login" replace />} />
     </Routes>
   );

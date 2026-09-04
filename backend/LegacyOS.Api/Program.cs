@@ -104,6 +104,7 @@ app.MapDashboardEndpoints();
 app.MapSessionEndpoints();
 app.MapWaiverEndpoints();
 app.MapDiscountEndpoints();
+app.MapStaffAccessEndpoints();
 
 app.Run();
 

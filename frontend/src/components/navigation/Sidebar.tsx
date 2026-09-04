@@ -19,6 +19,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import SettingsIcon from "@mui/icons-material/Settings";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { NavLink } from "react-router-dom";
 
 const primaryItems = [
@@ -37,6 +38,10 @@ const operationsItems = [
   { label: "Check-in", path: "/sessions", icon: <HowToRegIcon /> },
   { label: "Schedule", path: "/schedule", icon: <CalendarMonthIcon /> },
   { label: "Events", path: "/events", icon: <EventIcon /> },
+];
+
+const administrationItems = [
+  { label: "Administrator Access", path: "/access", icon: <AdminPanelSettingsIcon /> },
 ];
 
 
@@ -135,6 +140,7 @@ export function Sidebar({ drawerWidth }: SidebarProps) {
       <NavSection items={primaryItems} />
       <NavSection title="Catalog" items={catalogItems} />
       <NavSection title="Operations" items={operationsItems} />
+      <NavSection title="Administration" items={administrationItems} />
 
       <Box sx={{ flexGrow: 1 }} />
 
