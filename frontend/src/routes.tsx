@@ -30,6 +30,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/portal" replace />} />
+      <Route path="/login" element={<Navigate to="/portal/login" replace />} />
       <Route path="/portal/login" element={<AuthPage mode="login" />} />
       <Route path="/portal/register" element={<SelfRegistrationPage />} />
       <Route path="/portal" element={<RequireRole role="Customer"><PortalHomePage /></RequireRole>} />
@@ -42,6 +43,7 @@ export function AppRoutes() {
       <Route path="/sessions" element={<StaffPage><SessionsPage /></StaffPage>} />
       <Route path="/waivers" element={<StaffPage><WaiversPage /></StaffPage>} />
       <Route path="/usa-wrestling-verifications" element={<StaffPage><UsaWrestlingVerificationsPage /></StaffPage>} />
+      <Route path="*" element={<Navigate to="/portal/login" replace />} />
     </Routes>
   );
 }
