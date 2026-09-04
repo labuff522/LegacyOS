@@ -33,8 +33,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+var databaseConnectionString = builder.Configuration.GetConnectionString("LegacyOS")
+    ?? RenderDatabaseUrl.ToNpgsqlConnectionString(builder.Configuration["DATABASE_URL"]);
+if (string.IsNullOrWhiteSpace(databaseConnectionString))
+    throw new InvalidOperationException("Configure ConnectionStrings:LegacyOS or DATABASE_URL.");
+
 builder.Services.AddDbContext<LegacyOSDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("LegacyOS")));
+    options.UseNpgsql(databaseConnectionString));
 
 builder.Services.AddScoped<FamilyRegistrationService>();
 builder.Services.AddScoped<IPasswordHasher<PortalUser>, PasswordHasher<PortalUser>>();

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using System.Security.Cryptography;
 using System.Text;
 using LegacyOS.Api.Features.Purchases;
+using LegacyOS.Api.Infrastructure;
+using System.Data.Common;
 
 var failures = new List<string>();
 void Check(bool condition, string name)
@@ -17,6 +19,13 @@ Check(TokenUtilities.Hash(token) == TokenUtilities.Hash(token), "token hashing i
 Check(TokenUtilities.Hash(token) != token && TokenUtilities.Hash(token).Length == 64, "only a SHA-256 token hash is persisted");
 Check(TokenUtilities.NormalizeEmail(" Parent@Example.com ") == "PARENT@EXAMPLE.COM", "email identity is normalized");
 Check(TokenUtilities.IsValidEmail("parent@example.com") && !TokenUtilities.IsValidEmail("not-an-email"), "email addresses are validated");
+
+var renderConnection = new DbConnectionStringBuilder { ConnectionString = RenderDatabaseUrl.ToNpgsqlConnectionString(
+    "postgresql://denos%40user:p%40ss%3Aword@db.internal:5433/denos_test")! };
+Check((string)renderConnection["Host"] == "db.internal" && (string)renderConnection["Port"] == "5433" &&
+      (string)renderConnection["Database"] == "denos_test" && (string)renderConnection["Username"] == "denos@user" &&
+      (string)renderConnection["Password"] == "p@ss:word",
+    "Render PostgreSQL URLs convert safely to Npgsql connection strings");
 
 var webhookPayload = "{\"type\":\"checkout.session.completed\"}";
 var webhookSecret = "whsec_test_secret";

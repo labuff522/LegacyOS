@@ -20,3 +20,7 @@
 
 # Logs
 *.log
+
+# Generated test artifacts
+outputs/**/*.png
+outputs/**/*.ndjson
