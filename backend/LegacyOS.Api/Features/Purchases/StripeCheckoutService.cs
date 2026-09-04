@@ -45,7 +45,17 @@ public class StripeCheckoutService(HttpClient client, IConfiguration configurati
 
         using var response = await client.SendAsync(request, ct);
         var body = await response.Content.ReadAsStringAsync(ct);
-        if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Stripe rejected Checkout Session creation ({(int)response.StatusCode}).");
+        if (!response.IsSuccessStatusCode)
+        {
+            var stripeMessage = "Review the product's payment-plan settings.";
+            try
+            {
+                using var errorJson = JsonDocument.Parse(body);
+                stripeMessage = errorJson.RootElement.GetProperty("error").GetProperty("message").GetString() ?? stripeMessage;
+            }
+            catch (JsonException) { }
+            throw new InvalidOperationException($"Stripe rejected Checkout Session creation ({(int)response.StatusCode}): {stripeMessage}");
+        }
         using var json = JsonDocument.Parse(body);
         return new(json.RootElement.GetProperty("id").GetString()!, json.RootElement.GetProperty("url").GetString()!);
     }
