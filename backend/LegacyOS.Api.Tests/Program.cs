@@ -118,6 +118,9 @@ Check(sessionsSource.Contains("UsaWrestlingVerifications") && sessionsSource.Con
     "the staff check-in roster includes USA Wrestling submission and validation status");
 Check(sessionsSource.Contains("USA Wrestling membership not current") && sessionsSource.Contains("payment plan overdue"),
     "non-current USA membership and overdue installments block check-in with audited override");
+Check(sessionsSource.Contains("MapGet(\"/attendance\"") && sessionsSource.Contains("EntryType == SessionLedgerEntryType.CheckIn") &&
+      sessionsSource.Contains("eligibilityOverride"),
+    "staff attendance history exposes check-ins and audited eligibility overrides");
 var waiverSource = Source("backend/LegacyOS.Api/Features/Waivers/WaiverEndpoints.cs");
 Check(waiverSource.Contains("RequireAuthorization(\"StaffOnly\")") && waiverSource.Contains("RequireAuthorization(\"CustomerOnly\")"),
     "waiver administration is staff-only and guardian signing requires customer authentication");

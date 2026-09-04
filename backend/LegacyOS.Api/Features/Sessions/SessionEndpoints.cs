@@ -10,6 +10,7 @@ public static class SessionEndpoints
     {
         var group = app.MapGroup("/staff/sessions").RequireAuthorization("StaffOnly");
         group.MapGet("/roster", RosterAsync);
+        group.MapGet("/attendance", AttendanceAsync);
         group.MapGet("/athletes/{athleteId:guid}/ledger", LedgerAsync);
         group.MapPost("/athletes/{athleteId:guid}/check-in", CheckInAsync);
         group.MapPost("/athletes/{athleteId:guid}/packages", GrantPackageAsync);
@@ -51,6 +52,23 @@ public static class SessionEndpoints
         return Results.Ok(await db.SessionLedgerEntries.Where(x => x.AthleteId == athleteId)
             .OrderByDescending(x => x.CreatedOn).Select(x => new { x.Id, entryType = x.EntryType.ToString(),
                 x.SessionChange, x.Note, x.CreatedOn, productName = x.SessionCreditLot.Product.Name }).ToListAsync());
+    }
+
+    private static async Task<IResult> AttendanceAsync(Guid? familyId, Guid? athleteId, DateOnly? from, DateOnly? to, LegacyOSDbContext db)
+    {
+        var query = db.SessionLedgerEntries.Where(x => x.EntryType == SessionLedgerEntryType.CheckIn);
+        if (familyId is Guid selectedFamily) query = query.Where(x => x.SessionCreditLot.Athlete.FamilyId == selectedFamily);
+        if (athleteId is Guid selectedAthlete) query = query.Where(x => x.AthleteId == selectedAthlete);
+        if (from is DateOnly fromDate) query = query.Where(x => x.CreatedOn >= fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        if (to is DateOnly toDate) query = query.Where(x => x.CreatedOn < toDate.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        return Results.Ok(await query.OrderByDescending(x => x.CreatedOn).Take(250).Select(x => new
+        {
+            x.Id, x.AthleteId, athleteName = x.SessionCreditLot.Athlete.FirstName + " " + x.SessionCreditLot.Athlete.LastName,
+            x.SessionCreditLot.Athlete.FamilyId, x.SessionCreditLot.Athlete.Family.FamilyName,
+            productName = x.SessionCreditLot.Product.Name, x.SessionChange, x.Note, x.CreatedOn,
+            staffEmail = db.PortalUsers.Where(u => u.Id == x.StaffPortalUserId).Select(u => u.Email).FirstOrDefault(),
+            eligibilityOverride = x.Note != null && x.Note.StartsWith("ELIGIBILITY OVERRIDE")
+        }).ToListAsync());
     }
 
     private static async Task<IResult> CheckInAsync(Guid athleteId, CheckInRequest request, ClaimsPrincipal principal, LegacyOSDbContext db)
