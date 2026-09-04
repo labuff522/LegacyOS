@@ -165,7 +165,8 @@ public static class PurchaseEndpoints
         if (session.SessionId != order.StripeCheckoutSessionId) return Results.Forbid();
         order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId;
         await stripe.SetFiniteEndAsync(order, ct);
-        if (session.PaymentStatus == "paid") await CompleteOrderAsync(order, db);
+        if (session.PaymentStatus == "paid" || (session.PaymentStatus == "no_payment_required" && session.SubscriptionId is not null))
+            await CompleteOrderAsync(order, db);
         await db.SaveChangesAsync(ct);
         return Results.Ok(new { status = order.Status.ToString() });
     }
@@ -179,7 +180,8 @@ public static class PurchaseEndpoints
         var session = await stripe.GetAsync(order.StripeCheckoutSessionId, ct);
         order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId;
         await stripe.SetFiniteEndAsync(order, ct);
-        if (session.PaymentStatus == "paid") await CompleteOrderAsync(order, db);
+        if (session.PaymentStatus == "paid" || (session.PaymentStatus == "no_payment_required" && session.SubscriptionId is not null))
+            await CompleteOrderAsync(order, db);
         await db.SaveChangesAsync(ct);
         return Results.Ok(new { status = order.Status.ToString(), paymentStatus = session.PaymentStatus });
     }
@@ -217,7 +219,7 @@ public static class PurchaseEndpoints
             var paymentStatus = session.TryGetProperty("payment_status", out var ps) ? ps.GetString() : null;
             order.StripeCustomerId = StringProperty(session, "customer"); order.StripeSubscriptionId = StringProperty(session, "subscription");
             await stripe.SetFiniteEndAsync(order, ct);
-            if (paymentStatus == "paid" || (paymentStatus == "no_payment_required" && order.BillingDayOfMonth is null))
+            if (paymentStatus == "paid" || (paymentStatus == "no_payment_required" && order.StripeSubscriptionId is not null))
             {
                 await CompleteOrderAsync(order, db);
             }

@@ -137,6 +137,9 @@ Check(purchaseSource.Contains("DiscountCodeSnapshot") && purchaseSource.Contains
     "orders preserve applied discounts and count completed redemptions once");
 Check(purchaseSource.Contains("invoice.payment_failed") && purchaseSource.Contains("IsPaymentCurrent"),
     "Stripe invoice webhooks suspend and restore payment-plan eligibility");
+Check(purchaseSource.Contains("paymentStatus == \"no_payment_required\" && order.StripeSubscriptionId is not null") &&
+      purchaseSource.Contains("session.PaymentStatus == \"no_payment_required\" && session.SubscriptionId is not null"),
+    "a successfully created subscription activates access before its first scheduled installment");
 var selfRegistrationSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
 Check(selfRegistrationSource.Contains("MapPost(\"/self-register\"") &&
       selfRegistrationSource.Contains("new Family") && selfRegistrationSource.Contains("new PortalUser"),
