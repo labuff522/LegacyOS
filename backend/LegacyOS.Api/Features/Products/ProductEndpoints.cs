@@ -93,6 +93,28 @@ public static class ProductEndpoints
             await db.SaveChangesAsync(); return Results.NoContent();
         });
 
+        group.MapDelete("/{id:guid}", async (Guid id, LegacyOSDbContext db) =>
+        {
+            var product = await db.Products.SingleOrDefaultAsync(x => x.Id == id);
+            if (product is null) return Results.NotFound();
+
+            var hasHistory = await db.PurchaseOrders.AnyAsync(x => x.ProductId == id) ||
+                             await db.SessionCreditLots.AnyAsync(x => x.ProductId == id) ||
+                             await db.DiscountCodes.AnyAsync(x => x.ProductId == id);
+
+            if (hasHistory)
+            {
+                product.IsActive = false;
+                await db.SaveChangesAsync();
+                return Results.Ok(new ProductRemovalResult(false, true,
+                    "This product has historical records, so it was archived instead of deleted."));
+            }
+
+            db.Products.Remove(product);
+            await db.SaveChangesAsync();
+            return Results.Ok(new ProductRemovalResult(true, false, "The unused product was permanently deleted."));
+        });
+
         return group;
     }
 
@@ -127,3 +149,4 @@ public class CreateProductRequest
 }
 
 public class UpdateProductRequest : CreateProductRequest { public bool IsActive { get; set; } = true; }
+public record ProductRemovalResult(bool Deleted, bool Archived, string Message);

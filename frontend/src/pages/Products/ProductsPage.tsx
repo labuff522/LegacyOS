@@ -2,23 +2,25 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Card, CardContent, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
 import { http } from '../../api/http';
 import { PageHeader } from '../../components/common/PageHeader';
-import { createProduct, getProducts, updateProduct, type Product, type ProductInput } from '../../api/products';
+import { createProduct, getProducts, removeProduct, updateProduct, type Product, type ProductInput } from '../../api/products';
 
 const blank: ProductInput = { name: '', shortName: '', description: '', productType: 2, price: 0, isSessionPackage: true,
   hasUnlimitedSessions: false, sessionCount: 10, validityDays: 90, installmentCount: undefined, billingDayOfMonth: undefined, isActive: true };
 
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]); const [editing, setEditing] = useState<Product | null | undefined>();
+  const [removing, setRemoving] = useState<Product>(); const [notice, setNotice] = useState('');
   const [form, setForm] = useState<ProductInput>(blank); const [error, setError] = useState('');
   async function load() { try { setProducts(await getProducts()); } catch { setError('Unable to load products.'); } }
   useEffect(() => { getProducts().then(setProducts).catch(() => setError('Unable to load products.')); }, []);
   function open(product?: Product) { setEditing(product ?? null); setForm(product ? { ...product, productType: 2 } : blank); }
   async function save() { setError(''); try { if (editing) await updateProduct(editing.id, form); else await createProduct(form); setEditing(undefined); await load(); } catch { setError('Unable to save this product. Check all required values.'); } }
+  async function remove() { if (!removing) return; setError(''); setNotice(''); try { const result = await removeProduct(removing.id); setRemoving(undefined); setNotice(result.message); await load(); } catch { setError('Unable to remove this product.'); } }
   return <><PageHeader title="Products & session packages" subtitle="Create prices, session allowances, and purchase expiration rules." />
-    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}<Button variant="contained" onClick={() => open()}>Create product</Button>
+    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}{notice && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice('')}>{notice}</Alert>}<Button variant="contained" onClick={() => open()}>Create product</Button>
     <Stack spacing={2} sx={{ mt: 3 }}>{products.map(p => <Card key={p.id}><CardContent sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
       <div><Typography variant="h6">{p.name}</Typography><Typography color="text.secondary">${p.price.toFixed(2)} · {p.installmentCount ? `${p.installmentCount} payments of $${(p.price / p.installmentCount).toFixed(2)}${p.billingDayOfMonth ? ` on day ${p.billingDayOfMonth}` : ' monthly from purchase'}` : 'Pay in full'} · {p.isSessionPackage ? `${p.hasUnlimitedSessions ? 'Unlimited sessions' : `${p.sessionCount} sessions`} · valid ${p.validityDays} days` : p.productType} · {p.isActive ? 'Active' : 'Inactive'}</Typography><Typography>{p.description}</Typography></div>
-      <Button onClick={() => open(p)}>Manage</Button></CardContent></Card>)}</Stack>
+      <Stack direction="row"><Button onClick={() => open(p)}>Manage</Button><Button color="error" onClick={() => setRemoving(p)}>Remove</Button></Stack></CardContent></Card>)}</Stack>
     <DiscountManager products={products}/>
     <Dialog open={editing !== undefined} onClose={() => setEditing(undefined)} fullWidth><DialogTitle>{editing ? 'Manage product' : 'Create product'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}>
       <TextField required label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/>
@@ -32,6 +34,7 @@ export function ProductsPage() {
       {!form.hasUnlimitedSessions && <TextField required type="number" label="Number of sessions" value={form.sessionCount ?? ''} onChange={e => setForm({ ...form, sessionCount: Number(e.target.value) })}/>}<TextField required type="number" label="Valid for days" value={form.validityDays ?? ''} onChange={e => setForm({ ...form, validityDays: Number(e.target.value) })}/></>}
       <FormControlLabel control={<Checkbox checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })}/>} label="Available for purchase" />
     </Stack></DialogContent><DialogActions><Button onClick={() => setEditing(undefined)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></DialogActions></Dialog>
+    <Dialog open={!!removing} onClose={() => setRemoving(undefined)} fullWidth maxWidth="sm"><DialogTitle>Remove {removing?.name}?</DialogTitle><DialogContent><Typography>If this product has never been used, it will be permanently deleted. If it is connected to an order, athlete package, or discount, it will be archived and hidden from future purchases while its history is preserved.</Typography></DialogContent><DialogActions><Button onClick={() => setRemoving(undefined)}>Cancel</Button><Button color="error" variant="contained" onClick={remove}>Remove product</Button></DialogActions></Dialog>
   </>;
 }
 

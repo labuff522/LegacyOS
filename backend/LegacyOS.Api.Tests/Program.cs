@@ -126,6 +126,15 @@ Check(purchaseSource.Contains("IsAutomaticSibling") && purchaseSource.Contains("
 var discountClientSource = Source("frontend/src/pages/Products/ProductsPage.tsx");
 Check(discountClientSource.Contains("Deactivate") && discountClientSource.Contains("Reactivate") && discountClientSource.Contains("http.put(`/discount-codes/"),
     "staff can safely deactivate and reactivate discount codes while preserving history");
+var productSource = Source("backend/LegacyOS.Api/Features/Products/ProductEndpoints.cs");
+Check(productSource.Contains("MapDelete(\"/{id:guid}\"") && productSource.Contains("RequireAuthorization(\"StaffOnly\")") &&
+      productSource.Contains("db.PurchaseOrders.AnyAsync") && productSource.Contains("db.SessionCreditLots.AnyAsync") &&
+      productSource.Contains("db.DiscountCodes.AnyAsync") && productSource.Contains("product.IsActive = false") &&
+      productSource.Contains("db.Products.Remove(product)"),
+    "staff product removal deletes only unused products and archives products with history");
+Check(discountClientSource.Contains("removeProduct") && discountClientSource.Contains("Remove product") &&
+      discountClientSource.Contains("history is preserved"),
+    "product management confirms guarded removal and explains archival behavior");
 Check(purchaseSource.Contains("Legacy membership plans are no longer available") &&
       purchaseSource.Contains("return Results.Ok(new { products })"),
     "customer catalog and checkout expose products rather than legacy memberships");
