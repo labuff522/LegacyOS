@@ -40,6 +40,7 @@ public class LegacyOSDbContext : DbContext
 
     public DbSet<PortalUser> PortalUsers => Set<PortalUser>();
     public DbSet<PortalAccessToken> PortalAccessTokens => Set<PortalAccessToken>();
+    public DbSet<PortalPasswordResetToken> PortalPasswordResetTokens => Set<PortalPasswordResetToken>();
     public DbSet<GuardianInvitation> GuardianInvitations => Set<GuardianInvitation>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<UsaWrestlingVerification> UsaWrestlingVerifications => Set<UsaWrestlingVerification>();

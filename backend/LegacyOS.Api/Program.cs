@@ -15,6 +15,8 @@ using LegacyOS.Api.Features.Dashboard;
 using LegacyOS.Api.Features.Sessions;
 using LegacyOS.Api.Features.Waivers;
 using LegacyOS.Api.Features.Discounts;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +46,11 @@ builder.Services.AddDbContext<LegacyOSDbContext>(options =>
 builder.Services.AddScoped<FamilyRegistrationService>();
 builder.Services.AddScoped<IPasswordHasher<PortalUser>, PasswordHasher<PortalUser>>();
 builder.Services.AddHttpClient<StripeCheckoutService>(client => client.BaseAddress = new Uri("https://api.stripe.com/"));
+builder.Services.AddHttpClient<PasswordResetEmailService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.resend.com/");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("DenOS/1.0");
+});
 builder.Services.AddAuthentication(PortalTokenAuthenticationHandler.AuthenticationScheme)
     .AddScheme<AuthenticationSchemeOptions, PortalTokenAuthenticationHandler>(
         PortalTokenAuthenticationHandler.AuthenticationScheme, _ => { });
@@ -52,6 +59,10 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CustomerOnly", policy => policy.RequireRole(PortalRoles.Customer));
     options.AddPolicy("StaffOnly", policy => policy.RequireRole(PortalRoles.Staff));
 });
+builder.Services.AddRateLimiter(options => options.AddPolicy("PasswordRecovery", httpContext =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 })));
 
 var app = builder.Build();
 
@@ -65,6 +76,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("LocalFrontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

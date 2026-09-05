@@ -15,6 +15,7 @@ import { SessionsPage } from './pages/Sessions/SessionsPage';
 import { SelfRegistrationPage } from './pages/Portal/SelfRegistrationPage';
 import { WaiversPage } from './pages/Waivers/WaiversPage';
 import { AccessUsersPage } from './pages/Access/AccessUsersPage';
+import { PasswordResetPage } from './pages/Portal/PasswordResetPage';
 
 function RequireRole({ role, children }: { role: 'Customer' | 'Staff'; children: ReactNode }) {
   const { session } = useAuth();
@@ -34,6 +35,8 @@ export function AppRoutes() {
       <Route path="/login" element={<Navigate to="/portal/login" replace />} />
       <Route path="/portal/login" element={<AuthPage mode="login" />} />
       <Route path="/portal/register" element={<SelfRegistrationPage />} />
+      <Route path="/portal/forgot-password" element={<PasswordResetPage />} />
+      <Route path="/portal/reset-password" element={<PasswordResetPage />} />
       <Route path="/portal" element={<RequireRole role="Customer"><PortalHomePage /></RequireRole>} />
       <Route path="/portal/purchase/success" element={<RequireRole role="Customer"><PurchaseSuccessPage /></RequireRole>} />
       <Route path="/dashboard" element={<StaffPage><DashboardPage /></StaffPage>} />

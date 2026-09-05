@@ -37,6 +37,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           <TextField required type="email" autoComplete="email" label="Email" value={email} onChange={e => setEmail(e.target.value)} />
           <TextField required type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} label="Password" helperText={mode === 'register' ? 'At least 12 characters' : undefined} value={password} onChange={e => setPassword(e.target.value)} slotProps={{ htmlInput: { minLength: mode === 'register' ? 12 : undefined } }} />
           <Button disabled={submitting} type="submit" size="large" variant="contained">{mode === 'login' ? 'Sign in' : 'Create account'}</Button>
+          {mode === 'login' && <Link component="button" type="button" onClick={() => navigate('/portal/forgot-password')}>Forgot password?</Link>}
           <Link component="button" type="button" onClick={() => navigate(mode === 'login' ? '/portal/register' : '/portal/login')}>
             {mode === 'login' ? 'New family? Register and choose a package' : 'Already have an account? Sign in'}
           </Link>

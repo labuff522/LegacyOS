@@ -12,7 +12,7 @@ export function UsaWrestlingVerificationsPage() {
   async function review(row: Verification, status: string, expiresOn: string, staffNotes: string) {
     await http.put(`/staff/usa-wrestling-verifications/${row.id}`, { status, expiresOn: expiresOn || null, staffNotes }); await load();
   }
-  return <><PageHeader title="USA Wrestling Verification" subtitle="Submitted memberships needing review. Current and expired records are hidden." />
+  return <><PageHeader title="USA Wrestling Verification" subtitle="Only coach-verified Current memberships leave this queue. Expired memberships remain at the bottom." />
     {error && <Alert severity="error">{error}</Alert>}{!rows && !error && <CircularProgress />}
     <Stack spacing={2}>{rows?.map(row => <VerificationCard key={row.id} row={row} review={review} />)}</Stack>
     {rows?.length === 0 && <Typography color="text.secondary">No membership numbers have been submitted.</Typography>}

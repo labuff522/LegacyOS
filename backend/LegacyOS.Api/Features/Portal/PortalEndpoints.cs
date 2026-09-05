@@ -21,6 +21,8 @@ public static class PortalEndpoints
         })).AllowAnonymous();
         auth.MapPost("/self-register", SelfRegisterAsync).AllowAnonymous();
         auth.MapPost("/login", LoginAsync).AllowAnonymous();
+        auth.MapPost("/forgot-password", ForgotPasswordAsync).AllowAnonymous().RequireRateLimiting("PasswordRecovery");
+        auth.MapPost("/reset-password", ResetPasswordAsync).AllowAnonymous();
         auth.MapPost("/logout", LogoutAsync).RequireAuthorization();
 
         var portal = app.MapGroup("/portal").RequireAuthorization("CustomerOnly");
@@ -96,6 +98,48 @@ public static class PortalEndpoints
         var response = AddAccessToken(db, user, DateTime.UtcNow);
         await db.SaveChangesAsync();
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> ForgotPasswordAsync(ForgotPasswordRequest request, LegacyOSDbContext db,
+        PasswordResetEmailService emailService, ILogger<PasswordResetEmailService> logger, CancellationToken ct)
+    {
+        const string message = "If an active account uses that email, a password reset link has been sent.";
+        if (!TokenUtilities.IsValidEmail(request.Email)) return Results.Accepted(value: new { message });
+        var user = await db.PortalUsers.SingleOrDefaultAsync(x => x.NormalizedEmail == TokenUtilities.NormalizeEmail(request.Email!) && x.IsActive, ct);
+        if (user is null) return Results.Accepted(value: new { message });
+        var now = DateTime.UtcNow;
+        var oldTokens = await db.PortalPasswordResetTokens.Where(x => x.PortalUserId == user.Id && x.UsedOn == null).ToListAsync(ct);
+        foreach (var oldToken in oldTokens) oldToken.UsedOn = now;
+        var rawToken = TokenUtilities.CreateToken();
+        db.PortalPasswordResetTokens.Add(new PortalPasswordResetToken { Id = Guid.NewGuid(), PortalUserId = user.Id,
+            TokenHash = TokenUtilities.Hash(rawToken), CreatedOn = now, ExpiresOn = now.AddMinutes(30) });
+        await db.SaveChangesAsync(ct);
+        try { await emailService.SendAsync(user.Email, rawToken, ct); }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Password reset email delivery failed.");
+        }
+        return Results.Accepted(value: new { message });
+    }
+
+    private static async Task<IResult> ResetPasswordAsync(ResetPasswordRequest request, LegacyOSDbContext db,
+        IPasswordHasher<PortalUser> passwordHasher, CancellationToken ct)
+    {
+        if (!TokenUtilities.IsValidEmail(request.Email) || string.IsNullOrWhiteSpace(request.Token) || request.Password is null || request.Password.Length < 12)
+            return Results.BadRequest(new { message = "The reset link or new password is invalid." });
+        var now = DateTime.UtcNow;
+        var tokenHash = TokenUtilities.Hash(request.Token);
+        var normalizedEmail = TokenUtilities.NormalizeEmail(request.Email!);
+        var reset = await db.PortalPasswordResetTokens.Include(x => x.PortalUser)
+            .SingleOrDefaultAsync(x => x.TokenHash == tokenHash && x.PortalUser.NormalizedEmail == normalizedEmail, ct);
+        if (reset is null || reset.UsedOn != null || reset.ExpiresOn <= now || !reset.PortalUser.IsActive)
+            return Results.BadRequest(new { message = "The reset link is invalid or expired." });
+        reset.UsedOn = now;
+        reset.PortalUser.PasswordHash = passwordHasher.HashPassword(reset.PortalUser, request.Password);
+        var sessions = await db.PortalAccessTokens.Where(x => x.PortalUserId == reset.PortalUserId && x.RevokedOn == null).ToListAsync(ct);
+        foreach (var session in sessions) session.RevokedOn = now;
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> SelfRegisterAsync(SelfRegisterRequest request, HttpRequest http, LegacyOSDbContext db,
@@ -262,6 +306,8 @@ public static class PortalEndpoints
 
 public record RegisterRequest(string InvitationToken, string Email, string Password);
 public record LoginRequest(string Email, string Password);
+public record ForgotPasswordRequest(string? Email);
+public record ResetPasswordRequest(string? Email, string? Token, string? Password);
 public record UpdateOwnEmailRequest(string NewEmail, string CurrentPassword);
 public record AddOwnAthleteRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, string UsaWrestlingMembershipNumber);
 public record CreateInvitationRequest(Guid GuardianId);

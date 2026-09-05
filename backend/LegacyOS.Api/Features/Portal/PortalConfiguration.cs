@@ -56,3 +56,20 @@ public class GuardianInvitationConfiguration : IEntityTypeConfiguration<Guardian
         builder.HasOne(x => x.Guardian).WithMany().HasForeignKey(x => x.GuardianId).OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+public class PortalPasswordResetTokenConfiguration : IEntityTypeConfiguration<PortalPasswordResetToken>
+{
+    public void Configure(EntityTypeBuilder<PortalPasswordResetToken> builder)
+    {
+        builder.ToTable("portal_password_reset_tokens");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("portal_password_reset_token_id");
+        builder.Property(x => x.PortalUserId).HasColumnName("portal_user_id");
+        builder.Property(x => x.TokenHash).HasColumnName("token_hash").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.ExpiresOn).HasColumnName("expires_on");
+        builder.Property(x => x.CreatedOn).HasColumnName("created_on");
+        builder.Property(x => x.UsedOn).HasColumnName("used_on");
+        builder.HasIndex(x => x.TokenHash).IsUnique();
+        builder.HasOne(x => x.PortalUser).WithMany().HasForeignKey(x => x.PortalUserId).OnDelete(DeleteBehavior.Cascade);
+    }
+}

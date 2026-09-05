@@ -174,6 +174,12 @@ Check(selfRegistrationSource.Contains("AcceptedWaiverIds") &&
     "self-registration requires and records every current required waiver for 365 days");
 Check(selfRegistrationSource.Contains("requiredWaivers.Count > 0"),
     "self-registration does not require an invisible signature when no required waiver exists");
+Check(selfRegistrationSource.Contains("/forgot-password") && selfRegistrationSource.Contains("/reset-password") &&
+      selfRegistrationSource.Contains("RequireRateLimiting(\"PasswordRecovery\")") &&
+      selfRegistrationSource.Contains("PortalPasswordResetTokens") && selfRegistrationSource.Contains("ExpiresOn = now.AddMinutes(30)"),
+    "password recovery uses expiring, one-time server-side reset tokens");
+Check(selfRegistrationSource.Contains("session.RevokedOn = now") && selfRegistrationSource.Contains("PasswordHash = passwordHasher.HashPassword"),
+    "password reset changes the password and revokes existing sessions");
 var usaWrestlingSource = Source("backend/LegacyOS.Api/Features/UsaWrestling/UsaWrestlingEndpoints.cs");
 Check(usaWrestlingSource.Contains("RequireAuthorization(\"CustomerOnly\")") && usaWrestlingSource.Contains("Family.Guardians.Any"),
     "only an athlete's authenticated family can submit a USA Wrestling number");
@@ -181,9 +187,10 @@ Check(usaWrestlingSource.Contains("RequireAuthorization(\"StaffOnly\")") && usaW
     "USA Wrestling decisions are staff-only and audited");
 Check(usaWrestlingSource.Contains("Status = UsaWrestlingVerificationStatus.Pending"),
     "parent submission cannot self-verify a membership");
-Check(usaWrestlingSource.Contains("x.Status != UsaWrestlingVerificationStatus.Current") &&
+Check(usaWrestlingSource.Contains(".Where(x => x.Status != UsaWrestlingVerificationStatus.Current)") &&
+      usaWrestlingSource.Contains("x.Status == UsaWrestlingVerificationStatus.Expired") &&
       usaWrestlingSource.Contains("new DateOnly(today.Year, 8, 31)"),
-    "USA Wrestling review hides current records and uses the annual August 31 expiration");
+    "USA Wrestling review hides only coach-verified Current records and keeps Expired records last");
 
 if (failures.Count > 0)
 {

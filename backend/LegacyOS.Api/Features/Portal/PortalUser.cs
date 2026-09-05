@@ -38,6 +38,17 @@ public class GuardianInvitation
     public DateTime? AcceptedOn { get; set; }
 }
 
+public class PortalPasswordResetToken
+{
+    public Guid Id { get; set; }
+    public Guid PortalUserId { get; set; }
+    public PortalUser PortalUser { get; set; } = null!;
+    [MaxLength(64)] public string TokenHash { get; set; } = string.Empty;
+    public DateTime ExpiresOn { get; set; }
+    public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
+    public DateTime? UsedOn { get; set; }
+}
+
 public static class PortalRoles
 {
     public const string Customer = "Customer";

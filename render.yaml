@@ -28,6 +28,10 @@ services:
         sync: false
       - key: BootstrapStaff__Password
         sync: false
+      - key: Email__ResendApiKey
+        sync: false
+      - key: Email__From
+        sync: false
 
   - type: web
     name: denos-web-test

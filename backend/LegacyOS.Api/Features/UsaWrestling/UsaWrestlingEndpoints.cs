@@ -34,8 +34,9 @@ public static partial class UsaWrestlingEndpoints
     private static async Task<IResult> PendingAsync(LegacyOSDbContext db)
     {
         var rows = await db.UsaWrestlingVerifications.Include(x => x.Athlete).ThenInclude(x => x.Family)
-            .Where(x => x.Status != UsaWrestlingVerificationStatus.Current && x.Status != UsaWrestlingVerificationStatus.Expired)
-            .OrderBy(x => x.Status != UsaWrestlingVerificationStatus.Pending).ThenBy(x => x.SubmittedOn)
+            .Where(x => x.Status != UsaWrestlingVerificationStatus.Current)
+            .OrderBy(x => x.Status == UsaWrestlingVerificationStatus.Expired)
+            .ThenBy(x => x.Status != UsaWrestlingVerificationStatus.Pending).ThenBy(x => x.SubmittedOn)
             .Select(x => new { x.Id, x.AthleteId, athleteName = x.Athlete.FirstName + " " + x.Athlete.LastName,
                 x.Athlete.Family.FamilyName, x.MembershipNumber, status = x.Status.ToString(), x.SubmittedOn, x.ExpiresOn, x.StaffNotes }).ToListAsync();
         return Results.Ok(rows);
