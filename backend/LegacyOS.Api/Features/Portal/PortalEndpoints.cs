@@ -286,7 +286,8 @@ public static class PortalEndpoints
                         {
                             v.MembershipNumber, Status = v.Status.ToString(), v.SubmittedOn, v.VerifiedOn, v.ExpiresOn
                         }).FirstOrDefault(),
-                        SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive)
+                        SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive &&
+                                l.ExpiresOn > DateTime.UtcNow && (l.IsUnlimited || l.SessionsRemaining > 0))
                             .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                                 l.IsUnlimited, l.SessionsRemaining, l.ExpiresOn }).ToList()
                     })

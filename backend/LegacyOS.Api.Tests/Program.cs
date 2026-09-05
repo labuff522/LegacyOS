@@ -141,6 +141,10 @@ var sessionsSource = Source("backend/LegacyOS.Api/Features/Sessions/SessionEndpo
 Check(sessionsSource.Contains("RequireAuthorization(\"StaffOnly\")"), "session roster and check-in are staff-only");
 Check(sessionsSource.Contains("OrderBy(x => x.ExpiresOn)") && sessionsSource.Contains("FirstOrDefault(x => !x.IsUnlimited)"),
     "check-in consumes the earliest-expiring limited package before unlimited access");
+Check(sessionsSource.Contains("l.ExpiresOn > now && (l.IsUnlimited || l.SessionsRemaining > 0)"),
+    "check-in roster hides depleted and expired packages while preserving their records");
+Check(portalSource.Contains("l.ExpiresOn > DateTime.UtcNow && (l.IsUnlimited || l.SessionsRemaining > 0)"),
+    "parent portal shows only packages with current remaining access");
 Check(sessionsSource.Contains("PaidOutsideStripe") && sessionsSource.Contains("Complimentary") &&
       sessionsSource.Contains("GrantedByStaffPortalUserId = staffId"),
     "staff can assign an existing athlete a non-Stripe package with an audited source");

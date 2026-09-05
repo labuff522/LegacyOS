@@ -46,7 +46,8 @@ public static class FamilyEndpoints
                         a.LastName,
                         a.DateOfBirth,
                         a.Gender,
-                        SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == a.Id && l.IsActive)
+                        SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == a.Id && l.IsActive &&
+                                l.ExpiresOn > DateTime.UtcNow && (l.IsUnlimited || l.SessionsRemaining > 0))
                             .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                                 l.IsUnlimited, l.SessionsRemaining, l.ExpiresOn }).ToList(),
                         MissingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&
@@ -95,7 +96,8 @@ public static class FamilyEndpoints
                         a.LastName,
                         a.DateOfBirth,
                         a.Gender,
-                        SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == a.Id && l.IsActive)
+                        SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == a.Id && l.IsActive &&
+                                l.ExpiresOn > DateTime.UtcNow && (l.IsUnlimited || l.SessionsRemaining > 0))
                             .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                                 l.IsUnlimited, l.SessionsRemaining, l.ExpiresOn }).ToList(),
                         MissingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&

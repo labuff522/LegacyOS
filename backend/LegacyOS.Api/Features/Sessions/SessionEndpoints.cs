@@ -37,7 +37,8 @@ public static class SessionEndpoints
                 missingRequiredWaivers = db.WaiverTemplates.Count(w => w.IsActive && w.IsRequired &&
                     !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == x.Id && s.ExpiresOn > now)),
                 pendingPurchaseCount = db.PurchaseOrders.Count(o => o.AthleteId == x.Id && o.Status == Features.Purchases.PurchaseStatus.Pending),
-                Packages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive)
+                Packages = db.SessionCreditLots.Where(l => l.AthleteId == x.Id && l.IsActive &&
+                        l.ExpiresOn > now && (l.IsUnlimited || l.SessionsRemaining > 0))
                     .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
                         l.IsUnlimited, l.SessionsRemaining, l.GrantedOn, l.ExpiresOn,
                         isPaymentCurrent = l.PurchaseOrder == null || l.PurchaseOrder.IsPaymentCurrent,
