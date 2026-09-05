@@ -41,6 +41,7 @@ public class PurchaseOrder
     public string? StripeRefundId { get; set; }
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedOn { get; set; }
+    public DateTime? PurchaseConfirmationSentOn { get; set; }
     public bool DiscountRedemptionRecorded { get; set; }
     public int InstallmentCount { get; set; } = 1;
     public decimal InstallmentAmount { get; set; }

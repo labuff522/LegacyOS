@@ -40,10 +40,36 @@ public sealed class PasswordResetEmailService(HttpClient http, IConfiguration co
             "<p>Your DenOS email configuration is working.</p>", apiKey, from, ct);
     }
 
-    private async Task SendCoreAsync(string email, string subject, string html, string apiKey, string from, CancellationToken ct)
+    public async Task SendPurchaseConfirmationAsync(string email, string itemName, string? athleteName,
+        decimal amount, string currency, Guid orderId, CancellationToken ct)
+    {
+        var apiKey = configuration["Email:ResendApiKey"];
+        var from = configuration["Email:From"];
+        var frontend = configuration["Frontend:BaseUrl"]?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(frontend))
+            throw new InvalidOperationException("Purchase confirmation email is not configured.");
+        var encoder = HtmlEncoder.Default;
+        var logoUrl = encoder.Encode($"{frontend}/the-den-wrestling-center-logo.png");
+        var athleteLine = string.IsNullOrWhiteSpace(athleteName) ? "" : $"<p><strong>Athlete:</strong> {encoder.Encode(athleteName)}</p>";
+        var html = $"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#171717">
+              <div style="background:#050505;padding:24px;text-align:center"><img src="{logoUrl}" alt="The Den Wrestling Center" width="150" style="max-width:150px;height:auto" /></div>
+              <div style="padding:28px;border:1px solid #e5e5e5"><h1 style="font-size:24px">Thank you for your purchase!</h1>
+              <p>Your purchase from The Den Wrestling Center was successful.</p><p><strong>Purchase:</strong> {encoder.Encode(itemName)}</p>{athleteLine}
+              <p><strong>Total:</strong> {amount:0.00} {encoder.Encode(currency.ToUpperInvariant())}</p>
+              <p><strong>Order:</strong> {orderId}</p><p>You can review your athlete and current package in the <a href="{encoder.Encode(frontend + "/portal")}">Family Portal</a>.</p></div>
+            </div>
+            """;
+        await SendCoreAsync(email, $"Thank you for your purchase — {itemName}", html, apiKey, from, ct,
+            $"purchase-confirmation/{orderId:N}");
+    }
+
+    private async Task SendCoreAsync(string email, string subject, string html, string apiKey, string from,
+        CancellationToken ct, string? idempotencyKey = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "emails");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        if (idempotencyKey is not null) request.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
         request.Content = JsonContent.Create(new { from, to = new[] { email }, subject, html });
         using var response = await http.SendAsync(request, ct);
         if (!response.IsSuccessStatusCode)

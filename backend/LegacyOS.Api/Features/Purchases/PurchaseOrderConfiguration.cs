@@ -35,6 +35,7 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
         b.Property(x => x.StripeRefundId).HasColumnName("stripe_refund_id").HasMaxLength(255);
         b.Property(x => x.CreatedOn).HasColumnName("created_on");
         b.Property(x => x.CompletedOn).HasColumnName("completed_on");
+        b.Property(x => x.PurchaseConfirmationSentOn).HasColumnName("purchase_confirmation_sent_on");
         b.Property(x => x.InstallmentCount).HasColumnName("installment_count");
         b.Property(x => x.InstallmentAmount).HasColumnName("installment_amount").HasPrecision(10, 2);
         b.Property(x => x.IsPaymentCurrent).HasColumnName("is_payment_current");

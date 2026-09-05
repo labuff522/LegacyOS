@@ -5,6 +5,7 @@ using LegacyOS.Api.Features.Enrollments;
 using Microsoft.EntityFrameworkCore;
 using LegacyOS.Api.Features.Sessions;
 using LegacyOS.Api.Features.Discounts;
+using LegacyOS.Api.Features.Portal;
 
 namespace LegacyOS.Api.Features.Purchases;
 
@@ -154,14 +155,15 @@ public static class PurchaseEndpoints
     }
 
     private static async Task<IResult> ConfirmAsync(ConfirmCheckoutRequest request, ClaimsPrincipal principal,
-        LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
+        LegacyOSDbContext db, StripeCheckoutService stripe, PasswordResetEmailService emailService,
+        ILogger<PasswordResetEmailService> logger, CancellationToken ct)
     {
         var familyId = await FamilyIdAsync(principal, db);
         if (familyId is null || string.IsNullOrWhiteSpace(request.SessionId)) return Results.Forbid();
         var order = await db.PurchaseOrders.Include(x => x.Enrollment).Include(x => x.DiscountCode)
             .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.StripeCheckoutSessionId == request.SessionId, ct);
         if (order is null) return Results.NotFound();
-        if (order.Status == PurchaseStatus.Completed) return Results.Ok(new { status = order.Status.ToString() });
+        if (order.Status == PurchaseStatus.Completed) { await TrySendPurchaseConfirmationAsync(order, db, emailService, logger, ct); return Results.Ok(new { status = order.Status.ToString() }); }
         var session = await stripe.GetAsync(request.SessionId, ct);
         if (session.SessionId != order.StripeCheckoutSessionId) return Results.Forbid();
         order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId; order.StripePaymentIntentId = session.PaymentIntentId;
@@ -169,14 +171,16 @@ public static class PurchaseEndpoints
         if (session.PaymentStatus == "paid" || (session.PaymentStatus == "no_payment_required" && session.SubscriptionId is not null))
             await CompleteOrderAsync(order, db);
         await db.SaveChangesAsync(ct);
+        await TrySendPurchaseConfirmationAsync(order, db, emailService, logger, ct);
         return Results.Ok(new { status = order.Status.ToString() });
     }
 
-    private static async Task<IResult> ReconcileAsync(Guid orderId, LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
+    private static async Task<IResult> ReconcileAsync(Guid orderId, LegacyOSDbContext db, StripeCheckoutService stripe,
+        PasswordResetEmailService emailService, ILogger<PasswordResetEmailService> logger, CancellationToken ct)
     {
         var order = await db.PurchaseOrders.Include(x => x.Enrollment).Include(x => x.DiscountCode).SingleOrDefaultAsync(x => x.Id == orderId, ct);
         if (order is null) return Results.NotFound();
-        if (order.Status == PurchaseStatus.Completed) return Results.Ok(new { status = order.Status.ToString() });
+        if (order.Status == PurchaseStatus.Completed) { await TrySendPurchaseConfirmationAsync(order, db, emailService, logger, ct); return Results.Ok(new { status = order.Status.ToString() }); }
         if (string.IsNullOrWhiteSpace(order.StripeCheckoutSessionId)) return Results.BadRequest(new { message = "This order has no Stripe Checkout Session." });
         var session = await stripe.GetAsync(order.StripeCheckoutSessionId, ct);
         order.StripeCustomerId = session.CustomerId; order.StripeSubscriptionId = session.SubscriptionId; order.StripePaymentIntentId = session.PaymentIntentId;
@@ -184,6 +188,7 @@ public static class PurchaseEndpoints
         if (session.PaymentStatus == "paid" || (session.PaymentStatus == "no_payment_required" && session.SubscriptionId is not null))
             await CompleteOrderAsync(order, db);
         await db.SaveChangesAsync(ct);
+        await TrySendPurchaseConfirmationAsync(order, db, emailService, logger, ct);
         return Results.Ok(new { status = order.Status.ToString(), paymentStatus = session.PaymentStatus });
     }
 
@@ -218,7 +223,9 @@ public static class PurchaseEndpoints
             SessionChange = -remaining, Note = $"Package deactivated after refund: {order.RefundReason}", CreatedOn = DateTime.UtcNow });
     }
 
-    private static async Task<IResult> WebhookAsync(HttpRequest request, IConfiguration config, LegacyOSDbContext db, StripeCheckoutService stripe, CancellationToken ct)
+    private static async Task<IResult> WebhookAsync(HttpRequest request, IConfiguration config, LegacyOSDbContext db,
+        StripeCheckoutService stripe, PasswordResetEmailService emailService,
+        ILogger<PasswordResetEmailService> logger, CancellationToken ct)
     {
         using var reader = new StreamReader(request.Body);
         var payload = await reader.ReadToEndAsync();
@@ -254,7 +261,7 @@ public static class PurchaseEndpoints
                 installmentOrder.Status = PurchaseStatus.Completed; installmentOrder.CompletedOn ??= DateTime.UtcNow;
                 await GrantPackageAsync(installmentOrder, db);
             }
-            await db.SaveChangesAsync(); return Results.Ok();
+            await db.SaveChangesAsync(); await TrySendPurchaseConfirmationAsync(installmentOrder, db, emailService, logger, ct); return Results.Ok();
         }
         if (!session.TryGetProperty("metadata", out var metadata) || !metadata.TryGetProperty("purchase_order_id", out var orderValue) ||
             !Guid.TryParse(orderValue.GetString(), out var orderId)) return Results.Ok();
@@ -273,7 +280,7 @@ public static class PurchaseEndpoints
         }
         else if (type == "checkout.session.expired") order.Status = PurchaseStatus.Expired;
         else if (type == "checkout.session.async_payment_failed") order.Status = PurchaseStatus.Failed;
-        await db.SaveChangesAsync(); return Results.Ok();
+        await db.SaveChangesAsync(); await TrySendPurchaseConfirmationAsync(order, db, emailService, logger, ct); return Results.Ok();
     }
 
     private static string? StringProperty(JsonElement value, string name) =>
@@ -310,6 +317,32 @@ public static class PurchaseEndpoints
         { order.DiscountCode.RedemptionCount++; order.DiscountRedemptionRecorded = true; }
         if (order.Enrollment is not null) { order.Enrollment.IsActive = true; order.Enrollment.StartDate = DateTime.UtcNow; }
         await GrantPackageAsync(order, db);
+    }
+
+    private static async Task TrySendPurchaseConfirmationAsync(PurchaseOrder order, LegacyOSDbContext db,
+        PasswordResetEmailService emailService, ILogger logger, CancellationToken ct)
+    {
+        if (order.Status != PurchaseStatus.Completed || order.PurchaseConfirmationSentOn is not null) return;
+        try
+        {
+            var email = await db.PortalUsers.Where(x => x.Id == order.PortalUserId).Select(x => x.Email).SingleAsync(ct);
+            var itemName = SnapshotValue(order.ItemSnapshotJson, "Name") ?? "DenOS purchase";
+            var athleteName = SnapshotValue(order.AthleteSnapshotJson, "FirstName") is string first
+                ? $"{first} {SnapshotValue(order.AthleteSnapshotJson, "LastName")}".Trim() : null;
+            await emailService.SendPurchaseConfirmationAsync(email, itemName, athleteName, order.Amount, order.Currency, order.Id, ct);
+            order.PurchaseConfirmationSentOn = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception exception) { logger.LogError(exception, "Purchase confirmation email failed for order {OrderId}.", order.Id); }
+    }
+
+    private static string? SnapshotValue(string? json, string name)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        using var document = JsonDocument.Parse(json);
+        foreach (var property in document.RootElement.EnumerateObject())
+            if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.String) return property.Value.GetString();
+        return null;
     }
 }
 

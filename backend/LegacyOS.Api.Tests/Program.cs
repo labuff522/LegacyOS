@@ -124,6 +124,9 @@ Check(portalSource.Contains("/staff/email/test") && portalSource.Contains("Requi
     "staff can diagnose hosted Resend configuration without exposing the API key");
 Check(emailSource.Contains("/portal/accept-invitation?token=") && !emailSource.Contains("/portal/register?token="),
     "parent invitations use the existing-family account activation route instead of self-registration");
+Check(emailSource.Contains("the-den-wrestling-center-logo.png") && emailSource.Contains("The Den Wrestling Center") &&
+      emailSource.Contains("Idempotency-Key") && emailSource.Contains("purchase-confirmation/"),
+    "purchase confirmation email uses The Den branding and an order-specific idempotency key");
 Check(portalSource.Contains("NormalizeEmail(invitation.Guardian.Email) != normalizedEmail"),
     "registration invitation must match the guardian email");
 var purchaseSource = Source("backend/LegacyOS.Api/Features/Purchases/PurchaseEndpoints.cs");
@@ -209,6 +212,10 @@ Check(purchaseSource.Contains("DiscountCodeSnapshot") && purchaseSource.Contains
     "orders preserve applied discounts and count completed redemptions once");
 Check(purchaseSource.Contains("invoice.payment_failed") && purchaseSource.Contains("IsPaymentCurrent"),
     "Stripe invoice webhooks suspend and restore payment-plan eligibility");
+Check(purchaseSource.Contains("TrySendPurchaseConfirmationAsync") && purchaseSource.Contains("PurchaseConfirmationSentOn") &&
+      purchaseSource.Contains("logger.LogError(exception, \"Purchase confirmation email failed") &&
+      purchaseSource.Contains("await db.SaveChangesAsync(ct);"),
+    "completed purchases send one tracked confirmation without blocking payment fulfillment on email failure");
 Check(purchaseSource.Contains("paymentStatus == \"no_payment_required\" && order.StripeSubscriptionId is not null") &&
       purchaseSource.Contains("session.PaymentStatus == \"no_payment_required\" && session.SubscriptionId is not null"),
     "a successfully created subscription activates access before its first scheduled installment");
