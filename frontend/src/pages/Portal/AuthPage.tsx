@@ -1,14 +1,15 @@
 import { useState, type FormEvent } from 'react';
 import { Alert, Box, Button, Card, CardContent, Container, Link, Stack, TextField, Typography } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [params] = useSearchParams();
+  const [email, setEmail] = useState(params.get('email') ?? '');
   const [password, setPassword] = useState('');
-  const [invitationToken, setInvitationToken] = useState('');
+  const [invitationToken, setInvitationToken] = useState(params.get('token') ?? '');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 

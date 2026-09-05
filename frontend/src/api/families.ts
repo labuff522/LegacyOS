@@ -53,3 +53,4 @@ export type HistoricalOrder = { id: string; kind: string; status: string; origin
 export async function getFamilyOrders(familyId: string) { return (await http.get<HistoricalOrder[]>(`/families/${familyId}/orders`)).data; }
 export async function reconcileOrder(orderId: string) { return (await http.post<{ status: string; paymentStatus?: string }>(`/staff/purchases/${orderId}/reconcile`)).data; }
 export async function refundOrder(orderId: string, reason: string) { return (await http.post<{ status: string }>(`/staff/purchases/${orderId}/refund`, { reason })).data; }
+export async function sendParentInvitation(guardianId: string) { return (await http.post<{ message: string }>(`/staff/guardian-invitations`, { guardianId })).data; }

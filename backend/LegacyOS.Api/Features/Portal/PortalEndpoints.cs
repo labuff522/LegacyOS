@@ -273,22 +273,27 @@ public static class PortalEndpoints
         return family is null ? Results.NotFound() : Results.Ok(family);
     }
 
-    private static async Task<IResult> CreateInvitationAsync(CreateInvitationRequest request, LegacyOSDbContext db)
+    private static async Task<IResult> CreateInvitationAsync(CreateInvitationRequest request, LegacyOSDbContext db,
+        PasswordResetEmailService emailService, CancellationToken ct)
     {
         var guardian = await db.Guardians.SingleOrDefaultAsync(x => x.Id == request.GuardianId);
         if (guardian is null) return Results.NotFound();
         if (await db.PortalUsers.AnyAsync(x => x.GuardianId == guardian.Id))
             return Results.Conflict(new { message = "This guardian already has an account." });
 
-        var rawToken = TokenUtilities.CreateToken();
         var now = DateTime.UtcNow;
+        var oldInvitations = await db.GuardianInvitations.Where(x => x.GuardianId == guardian.Id && x.AcceptedOn == null).ToListAsync(ct);
+        foreach (var oldInvitation in oldInvitations) oldInvitation.AcceptedOn = now;
+        var rawToken = TokenUtilities.CreateToken();
         db.GuardianInvitations.Add(new GuardianInvitation
         {
             Id = Guid.NewGuid(), GuardianId = guardian.Id, TokenHash = TokenUtilities.Hash(rawToken),
             CreatedOn = now, ExpiresOn = now.AddHours(48)
         });
-        await db.SaveChangesAsync();
-        return Results.Ok(new { invitationToken = rawToken, guardian.Email, expiresOn = now.AddHours(48) });
+        await db.SaveChangesAsync(ct);
+        try { await emailService.SendInvitationAsync(guardian.Email, rawToken, ct); }
+        catch { return Results.Problem("Invitation email could not be delivered. Check the email configuration and guardian address.", statusCode: 503); }
+        return Results.Accepted(value: new { message = "Parent invitation sent.", guardian.Email, expiresOn = now.AddHours(48) });
     }
 
     private static AuthResponse AddAccessToken(LegacyOSDbContext db, PortalUser user, DateTime now)

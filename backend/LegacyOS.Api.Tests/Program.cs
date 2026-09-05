@@ -92,6 +92,8 @@ Check(familySource.Contains("linkedUser.NormalizedEmail = normalizedEmail"),
     "staff guardian email edits synchronize linked login accounts");
 Check(portalSource.Contains("invitation.AcceptedOn != null") && portalSource.Contains("invitation.ExpiresOn <= now"),
     "registration invitations are one-time and expiring");
+Check(portalSource.Contains("SendInvitationAsync") && !portalSource.Contains("invitationToken = rawToken"),
+    "staff-created parent invitations are emailed without exposing the raw token in the API response");
 Check(portalSource.Contains("NormalizeEmail(invitation.Guardian.Email) != normalizedEmail"),
     "registration invitation must match the guardian email");
 var purchaseSource = Source("backend/LegacyOS.Api/Features/Purchases/PurchaseEndpoints.cs");
