@@ -28,6 +28,7 @@ public static class PortalEndpoints
         var portal = app.MapGroup("/portal").RequireAuthorization("CustomerOnly");
         portal.MapGet("/me", GetCurrentFamilyAsync);
         portal.MapPut("/account/email", UpdateOwnEmailAsync);
+        portal.MapPut("/account/password", UpdateOwnPasswordAsync);
         portal.MapPost("/athletes", AddOwnAthleteAsync);
 
         app.MapPost("/staff/guardian-invitations", CreateInvitationAsync)
@@ -219,6 +220,27 @@ public static class PortalEndpoints
         return Results.Ok(new { user.Email });
     }
 
+    private static async Task<IResult> UpdateOwnPasswordAsync(UpdateOwnPasswordRequest request, ClaimsPrincipal principal,
+        LegacyOSDbContext db, IPasswordHasher<PortalUser> passwordHasher)
+    {
+        if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+        if (request.NewPassword is null || request.NewPassword.Length < 12)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = ["The new password must be at least 12 characters."] });
+        var user = await db.PortalUsers.SingleOrDefaultAsync(x => x.Id == userId && x.IsActive);
+        if (user is null) return Results.NotFound();
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword ?? string.Empty) == PasswordVerificationResult.Failed)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["currentPassword"] = ["The current password is incorrect."] });
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.NewPassword) != PasswordVerificationResult.Failed)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = ["Choose a password different from the current password."] });
+
+        user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
+        var now = DateTime.UtcNow;
+        var sessions = await db.PortalAccessTokens.Where(x => x.PortalUserId == user.Id && x.RevokedOn == null).ToListAsync();
+        foreach (var session in sessions) session.RevokedOn = now;
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    }
+
     private static async Task<IResult> AddOwnAthleteAsync(AddOwnAthleteRequest request, ClaimsPrincipal principal, LegacyOSDbContext db)
     {
         if (!Guid.TryParse(principal.FindFirstValue("guardian_id"), out var guardianId)) return Results.Forbid();
@@ -331,6 +353,7 @@ public record LoginRequest(string Email, string Password);
 public record ForgotPasswordRequest(string? Email);
 public record ResetPasswordRequest(string? Email, string? Token, string? Password);
 public record UpdateOwnEmailRequest(string NewEmail, string CurrentPassword);
+public record UpdateOwnPasswordRequest(string? CurrentPassword, string? NewPassword);
 public record AddOwnAthleteRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, string UsaWrestlingMembershipNumber);
 public record CreateInvitationRequest(Guid GuardianId);
 public record ResetGuardianPasswordRequest(string? Password);

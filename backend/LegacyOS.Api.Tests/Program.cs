@@ -75,6 +75,9 @@ Check(portalSource.Contains("Where(g => g.Id == guardianId"),
     "family lookup is scoped from the authenticated guardian claim");
 Check(portalSource.Contains("MapPut(\"/account/email\"") && portalSource.Contains("VerifyHashedPassword") && portalSource.Contains("user.Guardian.Email = user.Email"),
     "parent email changes require the current password and synchronize the guardian record");
+Check(portalSource.Contains("MapPut(\"/account/password\"") && portalSource.Contains("UpdateOwnPasswordAsync") &&
+      portalSource.Contains("Choose a password different from the current password") && portalSource.Contains("session.RevokedOn = now"),
+    "parents can securely change their own password and revoke active sessions");
 Check(portalSource.Contains("MapPost(\"/athletes\"") && portalSource.Contains("x.Id == guardianId && x.Family.IsActive") &&
       portalSource.Contains("UsaWrestlingVerificationStatus.Pending"),
     "parents can add athletes only to their authenticated family with a pending USA Wrestling submission");
