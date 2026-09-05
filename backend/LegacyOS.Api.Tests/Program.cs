@@ -69,6 +69,10 @@ Check(registrationServiceSource.Contains("x.IsSessionPackage") &&
     "admin registration assigns the selected active session product to each athlete");
 
 var portalSource = Source("backend/LegacyOS.Api/Features/Portal/PortalEndpoints.cs");
+var initializerSource = Source("backend/LegacyOS.Api/Infrastructure/DatabaseInitializer.cs");
+Check(initializerSource.Contains("Bootstrap administrator account was created successfully") &&
+      initializerSource.Contains("its password was not changed") && initializerSource.Contains("BootstrapStaff__Email or BootstrapStaff__Password is missing"),
+    "bootstrap administrator startup state is diagnosable without logging credentials");
 Check(portalSource.Contains("MapGroup(\"/portal\").RequireAuthorization(\"CustomerOnly\")"),
     "customer portal requires the customer policy");
 Check(portalSource.Contains("Where(g => g.Id == guardianId"),

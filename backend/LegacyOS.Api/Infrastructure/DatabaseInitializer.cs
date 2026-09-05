@@ -190,12 +190,22 @@ public static class DatabaseInitializer
     private static async Task EnsureBootstrapStaffAsync(IServiceProvider services, LegacyOSDbContext db)
     {
         var configuration = services.GetRequiredService<IConfiguration>();
+        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("BootstrapStaff");
         var email = configuration["BootstrapStaff:Email"];
         var password = configuration["BootstrapStaff:Password"];
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password)) return;
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            logger.LogWarning("Bootstrap administrator was not initialized because BootstrapStaff__Email or BootstrapStaff__Password is missing.");
+            return;
+        }
 
         var normalizedEmail = TokenUtilities.NormalizeEmail(email);
-        if (await db.PortalUsers.AnyAsync(x => x.NormalizedEmail == normalizedEmail)) return;
+        var existing = await db.PortalUsers.SingleOrDefaultAsync(x => x.NormalizedEmail == normalizedEmail);
+        if (existing is not null)
+        {
+            logger.LogInformation("Bootstrap administrator already exists with role {Role} and active status {IsActive}; its password was not changed.", existing.Role, existing.IsActive);
+            return;
+        }
 
         if (password.Length < 12)
             throw new InvalidOperationException("BootstrapStaff:Password must be at least 12 characters.");
@@ -209,5 +219,6 @@ public static class DatabaseInitializer
         user.PasswordHash = passwordHasher.HashPassword(user, password);
         db.PortalUsers.Add(user);
         await db.SaveChangesAsync();
+        logger.LogInformation("Bootstrap administrator account was created successfully.");
     }
 }
