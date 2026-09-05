@@ -35,6 +35,7 @@ export function AppRoutes() {
       <Route path="/login" element={<Navigate to="/portal/login" replace />} />
       <Route path="/portal/login" element={<AuthPage mode="login" />} />
       <Route path="/portal/register" element={<SelfRegistrationPage />} />
+      <Route path="/portal/accept-invitation" element={<AuthPage mode="register" />} />
       <Route path="/portal/forgot-password" element={<PasswordResetPage />} />
       <Route path="/portal/reset-password" element={<PasswordResetPage />} />
       <Route path="/portal" element={<RequireRole role="Customer"><PortalHomePage /></RequireRole>} />

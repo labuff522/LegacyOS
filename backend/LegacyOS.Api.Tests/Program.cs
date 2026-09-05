@@ -94,6 +94,9 @@ Check(portalSource.Contains("invitation.AcceptedOn != null") && portalSource.Con
     "registration invitations are one-time and expiring");
 Check(portalSource.Contains("SendInvitationAsync") && !portalSource.Contains("invitationToken = rawToken"),
     "staff-created parent invitations are emailed without exposing the raw token in the API response");
+var emailSource = Source("backend/LegacyOS.Api/Features/Portal/PasswordResetEmailService.cs");
+Check(emailSource.Contains("/portal/accept-invitation?token=") && !emailSource.Contains("/portal/register?token="),
+    "parent invitations use the existing-family account activation route instead of self-registration");
 Check(portalSource.Contains("NormalizeEmail(invitation.Guardian.Email) != normalizedEmail"),
     "registration invitation must match the guardian email");
 var purchaseSource = Source("backend/LegacyOS.Api/Features/Purchases/PurchaseEndpoints.cs");

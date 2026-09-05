@@ -25,7 +25,7 @@ public sealed class PasswordResetEmailService(HttpClient http, IConfiguration co
         var frontend = configuration["Frontend:BaseUrl"]?.TrimEnd('/');
         if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(frontend))
             throw new InvalidOperationException("Invitation email is not configured.");
-        var invitationUrl = $"{frontend}/portal/register?token={Uri.EscapeDataString(rawToken)}&email={Uri.EscapeDataString(email)}";
+        var invitationUrl = $"{frontend}/portal/accept-invitation?token={Uri.EscapeDataString(rawToken)}&email={Uri.EscapeDataString(email)}";
         await SendCoreAsync(email, "Create your DenOS family account",
             $"<p>Your family has been added to DenOS.</p><p><a href=\"{HtmlEncoder.Default.Encode(invitationUrl)}\">Create your password and access your family account</a></p><p>This invitation expires in 48 hours and can be used once.</p>", apiKey, from, ct);
     }
