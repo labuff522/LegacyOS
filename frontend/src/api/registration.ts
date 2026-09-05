@@ -14,6 +14,7 @@ export type RegisterFamilyRequest = {
     lastName: string;
     dateOfBirth: string;
     gender: string;
+    athleteGroupId: string;
   }[];
 };
 

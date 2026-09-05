@@ -13,6 +13,7 @@ public class AthleteConfiguration : IEntityTypeConfiguration<Athlete>
 
         builder.Property(x => x.Id).HasColumnName("athlete_id");
         builder.Property(x => x.FamilyId).HasColumnName("family_id");
+        builder.Property(x => x.AthleteGroupId).HasColumnName("athlete_group_id");
 
         builder.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
         builder.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
@@ -22,5 +23,7 @@ public class AthleteConfiguration : IEntityTypeConfiguration<Athlete>
         builder.HasOne(x => x.Family)
             .WithMany(x => x.Athletes)
             .HasForeignKey(x => x.FamilyId);
+        builder.HasOne(x => x.AthleteGroup).WithMany(x => x.Athletes)
+            .HasForeignKey(x => x.AthleteGroupId).OnDelete(DeleteBehavior.SetNull);
     }
 }

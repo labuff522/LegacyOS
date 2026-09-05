@@ -52,7 +52,7 @@ public static class PurchaseEndpoints
         {
             var plan = await db.MembershipPlans.SingleOrDefaultAsync(x => x.Id == planId && x.IsActive &&
                 x.Organization.FamilyOrganizations.Any(fo => fo.FamilyId == familyId && fo.IsActive), ct);
-            var athlete = await db.Athletes.SingleOrDefaultAsync(x => x.Id == athleteId && x.FamilyId == familyId, ct);
+            var athlete = await db.Athletes.Include(x => x.AthleteGroup).SingleOrDefaultAsync(x => x.Id == athleteId && x.FamilyId == familyId, ct);
             if (plan is null || athlete is null) return Results.BadRequest(new { message = "The athlete or membership plan is unavailable." });
             if (!await db.UsaWrestlingVerifications.AnyAsync(x => x.AthleteId == athlete.Id, ct))
                 return Results.BadRequest(new { message = "Enter the athlete's USA Wrestling membership number before purchasing a membership." });
@@ -60,7 +60,7 @@ public static class PurchaseEndpoints
             db.Enrollments.Add(enrollment);
             order.Kind = PurchaseKind.MembershipPlan; order.AthleteId = athlete.Id; order.MembershipPlanId = plan.Id;
             order.Enrollment = enrollment; order.EnrollmentId = enrollment.Id; order.Amount = plan.MonthlyPrice; order.OriginalAmount = plan.MonthlyPrice; itemName = plan.Name;
-            order.AthleteSnapshotJson = JsonSerializer.Serialize(new { athlete.Id, athlete.FirstName, athlete.LastName, athlete.DateOfBirth, athlete.Gender });
+            order.AthleteSnapshotJson = JsonSerializer.Serialize(new { athlete.Id, athlete.FirstName, athlete.LastName, athlete.DateOfBirth, athlete.Gender, athleteGroup = athlete.AthleteGroup == null ? null : new { athlete.AthleteGroup.Id, athlete.AthleteGroup.Name, athlete.AthleteGroup.Description } });
             order.ItemSnapshotJson = JsonSerializer.Serialize(new { plan.Id, plan.Name, plan.ShortName, plan.MonthlyPrice, kind = "MembershipPlan" });
         }
         else if (request.ProductId is Guid productId && request.MembershipPlanId is null)
@@ -78,8 +78,8 @@ public static class PurchaseEndpoints
                     !db.WaiverSignatures.Any(s => s.WaiverTemplateId == w.Id && s.AthleteId == packageAthleteId && s.ExpiresOn > DateTime.UtcNow), ct);
                 if (missingWaiver) return Results.BadRequest(new { message = "Sign every required waiver for this athlete before purchasing." });
                 order.AthleteId = packageAthleteId;
-                var athlete = await db.Athletes.AsNoTracking().SingleAsync(x => x.Id == packageAthleteId, ct);
-                order.AthleteSnapshotJson = JsonSerializer.Serialize(new { athlete.Id, athlete.FirstName, athlete.LastName, athlete.DateOfBirth, athlete.Gender });
+                var athlete = await db.Athletes.AsNoTracking().Include(x => x.AthleteGroup).SingleAsync(x => x.Id == packageAthleteId, ct);
+                order.AthleteSnapshotJson = JsonSerializer.Serialize(new { athlete.Id, athlete.FirstName, athlete.LastName, athlete.DateOfBirth, athlete.Gender, athleteGroup = athlete.AthleteGroup == null ? null : new { athlete.AthleteGroup.Id, athlete.AthleteGroup.Name, athlete.AthleteGroup.Description } });
             }
             else if (request.AthleteId is not null) return Results.BadRequest(new { message = "This product does not require an athlete." });
             order.Kind = PurchaseKind.Product; order.ProductId = product.Id; order.Amount = product.Price; order.OriginalAmount = product.Price; itemName = product.Name;

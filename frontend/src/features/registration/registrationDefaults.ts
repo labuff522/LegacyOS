@@ -7,7 +7,7 @@ export const defaultRegistrationFormData: RegistrationFormData = {
   guardianLastName: "",
   guardianEmail: "",
   guardianPhone: "",
-  athletes: [{ firstName: "", lastName: "", dateOfBirth: "", gender: "Male" }],
+  athletes: [{ firstName: "", lastName: "", dateOfBirth: "", gender: "Male", athleteGroupId: "" }],
   productId: "",
   productName: "",
 };

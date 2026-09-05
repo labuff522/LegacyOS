@@ -36,6 +36,10 @@ public class FamilyRegistrationService
                 "The selected session product is unavailable.");
         }
 
+        var activeGroupIds = await _db.AthleteGroups.Where(x => x.IsActive).Select(x => x.Id).ToListAsync();
+        if (request.Athletes.Any(x => !activeGroupIds.Contains(x.AthleteGroupId)))
+            throw new InvalidOperationException("Choose an active Group for every athlete.");
+
         await using IDbContextTransaction transaction =
             await _db.Database.BeginTransactionAsync();
 
@@ -69,7 +73,8 @@ public class FamilyRegistrationService
             FirstName = a.FirstName,
             LastName = a.LastName,
             DateOfBirth = a.DateOfBirth,
-            Gender = a.Gender
+            Gender = a.Gender,
+            AthleteGroupId = a.AthleteGroupId
         }).ToList();
 
         var familyOrganization = new FamilyOrganization

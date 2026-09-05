@@ -1,14 +1,20 @@
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import type { RegistrationAthlete, RegistrationFormData } from "../types";
+import { http } from "../../../api/http";
 
 type AthletesStepProps = {
   data: RegistrationFormData;
@@ -16,6 +22,8 @@ type AthletesStepProps = {
 };
 
 export function AthletesStep({ data, updateData }: AthletesStepProps) {
+  const [groups, setGroups] = useState<{ id: string; name: string; description: string }[]>([]);
+  useEffect(() => { http.get<{ athleteGroups: { id: string; name: string; description: string }[] }>("/portal/auth/registration-options").then(r => setGroups(r.data.athleteGroups)); }, []);
   const updateAthlete = (
     index: number,
     updates: Partial<RegistrationAthlete>
@@ -36,6 +44,7 @@ export function AthletesStep({ data, updateData }: AthletesStepProps) {
           lastName: "",
           dateOfBirth: "",
           gender: "Male",
+          athleteGroupId: "",
         },
       ],
     });
@@ -96,6 +105,9 @@ export function AthletesStep({ data, updateData }: AthletesStepProps) {
                 }
                 fullWidth
               />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <FormControl fullWidth required><InputLabel>Group</InputLabel><Select label="Group" value={athlete.athleteGroupId} onChange={event => updateAthlete(index, { athleteGroupId: event.target.value })}>{groups.map(group => <MenuItem key={group.id} value={group.id}><Box><Typography>{group.name}</Typography><Typography variant="caption" color="text.secondary">{group.description}</Typography></Box></MenuItem>)}</Select></FormControl>
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>

@@ -105,6 +105,7 @@ app.MapGet("/health", async (LegacyOSDbContext db) =>
 });
 
 app.MapFamilyEndpoints();
+app.MapAthleteGroupEndpoints();
 app.MapRegistrationEndpoints();
 app.MapMembershipEndpoints();
 app.MapProductEndpoints();

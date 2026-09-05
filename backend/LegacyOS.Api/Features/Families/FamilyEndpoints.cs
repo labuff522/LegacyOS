@@ -46,6 +46,7 @@ public static class FamilyEndpoints
                         a.LastName,
                         a.DateOfBirth,
                         a.Gender,
+                        AthleteGroup = a.AthleteGroup == null ? null : new { a.AthleteGroup.Id, a.AthleteGroup.Name, a.AthleteGroup.Description },
                         SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == a.Id && l.IsActive &&
                                 l.ExpiresOn > DateTime.UtcNow && (l.IsUnlimited || l.SessionsRemaining > 0))
                             .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
@@ -96,6 +97,7 @@ public static class FamilyEndpoints
                         a.LastName,
                         a.DateOfBirth,
                         a.Gender,
+                        AthleteGroup = a.AthleteGroup == null ? null : new { a.AthleteGroup.Id, a.AthleteGroup.Name, a.AthleteGroup.Description },
                         SessionPackages = db.SessionCreditLots.Where(l => l.AthleteId == a.Id && l.IsActive &&
                                 l.ExpiresOn > DateTime.UtcNow && (l.IsUnlimited || l.SessionsRemaining > 0))
                             .OrderBy(l => l.ExpiresOn).Select(l => new { l.Id, productName = l.Product.Name,
@@ -152,14 +154,16 @@ public static class FamilyEndpoints
         group.MapPost("/{familyId:guid}/athletes", async (Guid familyId, AthleteEditRequest request, LegacyOSDbContext db) =>
         {
             if (!await db.Families.AnyAsync(x => x.Id == familyId)) return Results.NotFound();
-            var athlete = new Athlete { Id = Guid.NewGuid(), FamilyId = familyId, FirstName = request.FirstName.Trim(), LastName = request.LastName.Trim(), DateOfBirth = request.DateOfBirth, Gender = request.Gender?.Trim() };
+            if (!await db.AthleteGroups.AnyAsync(x => x.Id == request.AthleteGroupId && x.IsActive)) return Results.BadRequest(new { message = "Choose an active Group." });
+            var athlete = new Athlete { Id = Guid.NewGuid(), FamilyId = familyId, FirstName = request.FirstName.Trim(), LastName = request.LastName.Trim(), DateOfBirth = request.DateOfBirth, Gender = request.Gender?.Trim(), AthleteGroupId = request.AthleteGroupId };
             db.Athletes.Add(athlete); await db.SaveChangesAsync(); return Results.Created($"/families/{familyId}/athletes/{athlete.Id}", new { athlete.Id });
         });
 
         group.MapPut("/{familyId:guid}/athletes/{athleteId:guid}", async (Guid familyId, Guid athleteId, AthleteEditRequest request, LegacyOSDbContext db) =>
         {
             var athlete = await db.Athletes.SingleOrDefaultAsync(x => x.Id == athleteId && x.FamilyId == familyId); if (athlete is null) return Results.NotFound();
-            athlete.FirstName = request.FirstName.Trim(); athlete.LastName = request.LastName.Trim(); athlete.DateOfBirth = request.DateOfBirth; athlete.Gender = request.Gender?.Trim();
+            if (!await db.AthleteGroups.AnyAsync(x => x.Id == request.AthleteGroupId && (x.IsActive || x.Id == athlete.AthleteGroupId))) return Results.BadRequest(new { message = "Choose a valid Group." });
+            athlete.FirstName = request.FirstName.Trim(); athlete.LastName = request.LastName.Trim(); athlete.DateOfBirth = request.DateOfBirth; athlete.Gender = request.Gender?.Trim(); athlete.AthleteGroupId = request.AthleteGroupId;
             await db.SaveChangesAsync(); return Results.NoContent();
         });
 
@@ -170,4 +174,4 @@ public static class FamilyEndpoints
 public record UpdateFamilyRequest(string FamilyName, bool IsActive);
 public record ArchiveFamilyRequest(bool Archived);
 public record UpdateGuardianRequest(string FirstName, string LastName, string Email, string Phone, bool IsPrimaryContact);
-public record AthleteEditRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender);
+public record AthleteEditRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, Guid AthleteGroupId);

@@ -17,7 +17,9 @@ public static class PortalEndpoints
         auth.MapGet("/registration-options", async (LegacyOSDbContext db) => Results.Ok(new
         {
             waivers = await db.WaiverTemplates.Where(x => x.IsActive).OrderBy(x => x.Name)
-                .Select(x => new { x.Id, x.Name, x.Version, x.FileName, x.IsRequired }).ToListAsync()
+                .Select(x => new { x.Id, x.Name, x.Version, x.FileName, x.IsRequired }).ToListAsync(),
+            athleteGroups = await db.AthleteGroups.Where(x => x.IsActive).OrderBy(x => x.Name)
+                .Select(x => new { x.Id, x.Name, x.Description }).ToListAsync()
         })).AllowAnonymous();
         auth.MapPost("/self-register", SelfRegisterAsync).AllowAnonymous();
         auth.MapPost("/login", LoginAsync).AllowAnonymous();
@@ -30,6 +32,7 @@ public static class PortalEndpoints
         portal.MapPut("/account/email", UpdateOwnEmailAsync);
         portal.MapPut("/account/password", UpdateOwnPasswordAsync);
         portal.MapPost("/athletes", AddOwnAthleteAsync);
+        portal.MapPut("/athletes/{athleteId:guid}/group", UpdateOwnAthleteGroupAsync);
 
         app.MapPost("/staff/guardian-invitations", CreateInvitationAsync)
             .RequireAuthorization("StaffOnly");
@@ -176,6 +179,9 @@ public static class PortalEndpoints
         if (requiredWaivers.Count > 0 &&
             (string.IsNullOrWhiteSpace(request.SignedName) || requiredWaivers.Any(x => !request.AcceptedWaiverIds.Contains(x.Id))))
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["waivers"] = ["Every required waiver must be reviewed and accepted."] });
+        var activeGroupIds = await db.AthleteGroups.Where(x => x.IsActive).Select(x => x.Id).ToListAsync();
+        if (request.Athletes.Any(x => !activeGroupIds.Contains(x.AthleteGroupId)))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["athleteGroup"] = ["Choose an active Group for every athlete."] });
         var normalizedEmail = TokenUtilities.NormalizeEmail(request.Email);
         if (await db.PortalUsers.AnyAsync(x => x.NormalizedEmail == normalizedEmail))
             return Results.Conflict(new { message = "An account already exists for this email." });
@@ -186,7 +192,7 @@ public static class PortalEndpoints
             FirstName = request.GuardianFirstName.Trim(), LastName = request.GuardianLastName.Trim(), Email = request.Email.Trim(),
             Phone = request.Phone.Trim(), IsPrimaryContact = true, ReceivesBilling = true, ReceivesSms = true };
         var athletes = request.Athletes.Select(x => new Athlete { Id = Guid.NewGuid(), Family = family, FamilyId = family.Id,
-            FirstName = x.FirstName.Trim(), LastName = x.LastName.Trim(), DateOfBirth = x.DateOfBirth, Gender = x.Gender?.Trim() }).ToList();
+            FirstName = x.FirstName.Trim(), LastName = x.LastName.Trim(), DateOfBirth = x.DateOfBirth, Gender = x.Gender?.Trim(), AthleteGroupId = x.AthleteGroupId }).ToList();
         var user = new PortalUser { Id = Guid.NewGuid(), Email = guardian.Email, NormalizedEmail = normalizedEmail,
             Guardian = guardian, GuardianId = guardian.Id, Role = PortalRoles.Customer, CreatedOn = DateTime.UtcNow };
         user.PasswordHash = passwordHasher.HashPassword(user, request.Password);
@@ -268,8 +274,10 @@ public static class PortalEndpoints
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["athlete"] = ["Name, date of birth, and USA Wrestling membership number are required."] });
         var familyId = await db.Guardians.Where(x => x.Id == guardianId && x.Family.IsActive).Select(x => (Guid?)x.FamilyId).SingleOrDefaultAsync();
         if (familyId is null) return Results.Forbid();
+        if (!await db.AthleteGroups.AnyAsync(x => x.Id == request.AthleteGroupId && x.IsActive))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["athleteGroup"] = ["Choose an active Group."] });
         var athlete = new Athlete { Id = Guid.NewGuid(), FamilyId = familyId.Value, FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(), DateOfBirth = request.DateOfBirth, Gender = request.Gender?.Trim() };
+            LastName = request.LastName.Trim(), DateOfBirth = request.DateOfBirth, Gender = request.Gender?.Trim(), AthleteGroupId = request.AthleteGroupId };
         db.Athletes.Add(athlete);
         db.UsaWrestlingVerifications.Add(new Features.UsaWrestling.UsaWrestlingVerification { Id = Guid.NewGuid(), Athlete = athlete,
             AthleteId = athlete.Id, MembershipNumber = request.UsaWrestlingMembershipNumber.Trim(),
@@ -300,6 +308,7 @@ public static class PortalEndpoints
                     Athletes = g.Family.Athletes.Select(x => new
                     {
                         x.Id, x.FirstName, x.LastName, x.DateOfBirth, x.Gender,
+                        AthleteGroup = x.AthleteGroup == null ? null : new { x.AthleteGroup.Id, x.AthleteGroup.Name, x.AthleteGroup.Description },
                         UsaWrestling = db.UsaWrestlingVerifications.Where(v => v.AthleteId == x.Id).Select(v => new
                         {
                             v.MembershipNumber, Status = v.Status.ToString(), v.SubmittedOn, v.VerifiedOn, v.ExpiresOn
@@ -314,6 +323,20 @@ public static class PortalEndpoints
             .SingleOrDefaultAsync();
 
         return family is null ? Results.NotFound() : Results.Ok(family);
+    }
+
+    private static async Task<IResult> UpdateOwnAthleteGroupAsync(Guid athleteId, UpdateOwnAthleteGroupRequest request,
+        ClaimsPrincipal principal, LegacyOSDbContext db)
+    {
+        if (!Guid.TryParse(principal.FindFirstValue("guardian_id"), out var guardianId)) return Results.Forbid();
+        var athlete = await db.Athletes.SingleOrDefaultAsync(x => x.Id == athleteId &&
+            x.Family.Guardians.Any(g => g.Id == guardianId) && x.Family.IsActive);
+        if (athlete is null) return Results.NotFound();
+        if (!await db.AthleteGroups.AnyAsync(x => x.Id == request.AthleteGroupId && x.IsActive))
+            return Results.BadRequest(new { message = "Choose an active Group." });
+        athlete.AthleteGroupId = request.AthleteGroupId;
+        await db.SaveChangesAsync();
+        return Results.NoContent();
     }
 
     private static async Task<IResult> CreateInvitationAsync(CreateInvitationRequest request, LegacyOSDbContext db,
@@ -373,10 +396,11 @@ public record ForgotPasswordRequest(string? Email);
 public record ResetPasswordRequest(string? Email, string? Token, string? Password);
 public record UpdateOwnEmailRequest(string NewEmail, string CurrentPassword);
 public record UpdateOwnPasswordRequest(string? CurrentPassword, string? NewPassword);
-public record AddOwnAthleteRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, string UsaWrestlingMembershipNumber);
+public record AddOwnAthleteRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, Guid AthleteGroupId, string UsaWrestlingMembershipNumber);
+public record UpdateOwnAthleteGroupRequest(Guid AthleteGroupId);
 public record CreateInvitationRequest(Guid GuardianId);
 public record ResetGuardianPasswordRequest(string? Password);
 public record AuthResponse(string AccessToken, DateTime ExpiresOn, string Email, string Role);
 public record SelfRegisterRequest(string FamilyName, string GuardianFirstName, string GuardianLastName, string Email,
     string Phone, string Password, string SignedName, List<Guid> AcceptedWaiverIds, List<SelfRegisterAthlete> Athletes);
-public record SelfRegisterAthlete(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender);
+public record SelfRegisterAthlete(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, Guid AthleteGroupId);

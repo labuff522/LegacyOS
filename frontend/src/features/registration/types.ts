@@ -5,6 +5,7 @@ export type RegistrationAthlete = {
   lastName: string;
   dateOfBirth: string;
   gender: string;
+  athleteGroupId: string;
 };
 
 export type RegistrationFormData = {

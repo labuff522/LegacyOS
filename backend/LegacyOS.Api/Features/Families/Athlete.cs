@@ -10,6 +10,9 @@ public class Athlete
 
     public Family Family { get; set; } = null!;
 
+    public Guid? AthleteGroupId { get; set; }
+    public AthleteGroup? AthleteGroup { get; set; }
+
     [MaxLength(100)]
     public string FirstName { get; set; } = string.Empty;
 

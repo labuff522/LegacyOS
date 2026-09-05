@@ -16,6 +16,7 @@ import { SelfRegistrationPage } from './pages/Portal/SelfRegistrationPage';
 import { WaiversPage } from './pages/Waivers/WaiversPage';
 import { AccessUsersPage } from './pages/Access/AccessUsersPage';
 import { PasswordResetPage } from './pages/Portal/PasswordResetPage';
+import { AthleteGroupsPage } from './pages/AthleteGroups/AthleteGroupsPage';
 
 function RequireRole({ role, children }: { role: 'Customer' | 'Staff'; children: ReactNode }) {
   const { session } = useAuth();
@@ -45,6 +46,7 @@ export function AppRoutes() {
       <Route path="/families/:familyId" element={<StaffPage><FamilyDetailPage /></StaffPage>} />
       <Route path="/registration" element={<StaffPage><RegistrationPage /></StaffPage>} />
       <Route path="/products" element={<StaffPage><ProductsPage /></StaffPage>} />
+      <Route path="/athlete-groups" element={<StaffPage><AthleteGroupsPage /></StaffPage>} />
       <Route path="/sessions" element={<StaffPage><SessionsPage /></StaffPage>} />
       <Route path="/waivers" element={<StaffPage><WaiversPage /></StaffPage>} />
       <Route path="/usa-wrestling-verifications" element={<StaffPage><UsaWrestlingVerificationsPage /></StaffPage>} />

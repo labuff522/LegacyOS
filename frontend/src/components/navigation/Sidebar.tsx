@@ -20,6 +20,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import CategoryIcon from "@mui/icons-material/Category";
 import { NavLink } from "react-router-dom";
 
 const primaryItems = [
@@ -32,6 +33,7 @@ const primaryItems = [
 
 const catalogItems = [
   { label: "Products", path: "/products", icon: <InventoryIcon /> },
+  { label: "Athlete Groups", path: "/athlete-groups", icon: <CategoryIcon /> },
 ];
 
 const operationsItems = [

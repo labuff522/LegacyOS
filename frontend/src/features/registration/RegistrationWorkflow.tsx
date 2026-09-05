@@ -47,6 +47,7 @@ export function RegistrationWorkflow() {
           lastName: athlete.lastName.trim(),
           dateOfBirth: athlete.dateOfBirth,
           gender: athlete.gender,
+          athleteGroupId: athlete.athleteGroupId,
         })),
       });
 

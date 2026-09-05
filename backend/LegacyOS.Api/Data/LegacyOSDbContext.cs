@@ -24,6 +24,7 @@ public class LegacyOSDbContext : DbContext
     public DbSet<Family> Families => Set<Family>();
     public DbSet<Guardian> Guardians => Set<Guardian>();
     public DbSet<Athlete> Athletes => Set<Athlete>();
+    public DbSet<AthleteGroup> AthleteGroups => Set<AthleteGroup>();
 
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<FamilyOrganization> FamilyOrganizations => Set<FamilyOrganization>();

@@ -88,6 +88,11 @@ Check(portalSource.Contains("MapPut(\"/account/password\"") && portalSource.Cont
 Check(portalSource.Contains("MapPost(\"/athletes\"") && portalSource.Contains("x.Id == guardianId && x.Family.IsActive") &&
       portalSource.Contains("UsaWrestlingVerificationStatus.Pending"),
     "parents can add athletes only to their authenticated family with a pending USA Wrestling submission");
+Check(portalSource.Contains("athleteGroups = await db.AthleteGroups.Where(x => x.IsActive)") &&
+      portalSource.Contains("MapPut(\"/athletes/{athleteId:guid}/group\"") &&
+      portalSource.Contains("x.Family.Guardians.Any(g => g.Id == guardianId)") &&
+      portalSource.Contains("AthleteGroupId = request.AthleteGroupId"),
+    "families can select active Groups and change only their own athletes' Group");
 var staffAccessSource = Source("backend/LegacyOS.Api/Features/Portal/StaffAccessEndpoints.cs");
 Check(staffAccessSource.Contains("RequireAuthorization(\"StaffOnly\")") && staffAccessSource.Contains("Role == PortalRoles.Staff"),
     "administrator access management is restricted to staff accounts");
@@ -96,6 +101,12 @@ Check(staffAccessSource.Contains("You cannot deactivate your own account") && st
 Check(staffAccessSource.Contains("RevokeTokensAsync") && staffAccessSource.Contains("token.RevokedOn = now"),
     "administrator deactivation and password resets revoke existing sessions");
 var familySource = Source("backend/LegacyOS.Api/Features/Families/FamilyEndpoints.cs");
+var athleteGroupSource = Source("backend/LegacyOS.Api/Features/Families/AthleteGroupEndpoints.cs");
+Check(athleteGroupSource.Contains("/athlete-groups") && athleteGroupSource.Contains("RequireAuthorization(\"StaffOnly\")") &&
+      athleteGroupSource.Contains("Description") && athleteGroupSource.Contains("IsActive"),
+    "staff exclusively manages described Athlete Groups and can archive them");
+Check(familySource.Contains("AthleteGroup = a.AthleteGroup") && familySource.Contains("athlete.AthleteGroupId = request.AthleteGroupId"),
+    "staff can view and correct Group assignments from family records");
 Check(familySource.Contains("/{id:guid}/archive") && familySource.Contains("token.RevokedOn = DateTime.UtcNow") && familySource.Contains("user.IsActive = !request.Archived"),
     "archiving preserves family data while disabling accounts and revoking sessions");
 Check(familySource.Contains("linkedUser.NormalizedEmail = normalizedEmail"),
@@ -192,6 +203,8 @@ Check(!httpClientSource.Contains("'Content-Type': 'application/json'"),
 Check(purchaseSource.Contains("FamilySnapshotJson = JsonSerializer.Serialize") &&
       purchaseSource.Contains("AthleteSnapshotJson") && purchaseSource.Contains("ItemSnapshotJson"),
     "orders retain immutable family, athlete, and item snapshots");
+Check(purchaseSource.Contains("Include(x => x.AthleteGroup)") && purchaseSource.Contains("athleteGroup = athlete.AthleteGroup"),
+    "historical order snapshots retain the athlete's Group at purchase time");
 Check(purchaseSource.Contains("DiscountCodeSnapshot") && purchaseSource.Contains("DiscountRedemptionRecorded"),
     "orders preserve applied discounts and count completed redemptions once");
 Check(purchaseSource.Contains("invoice.payment_failed") && purchaseSource.Contains("IsPaymentCurrent"),
