@@ -35,8 +35,26 @@ public static class PortalEndpoints
             .RequireAuthorization("StaffOnly");
         app.MapPut("/staff/guardians/{guardianId:guid}/password", ResetGuardianPasswordAsync)
             .RequireAuthorization("StaffOnly");
+        app.MapPost("/staff/email/test", SendStaffEmailTestAsync)
+            .RequireAuthorization("StaffOnly");
 
         return portal;
+    }
+
+    private static async Task<IResult> SendStaffEmailTestAsync(ClaimsPrincipal principal,
+        PasswordResetEmailService emailService, CancellationToken ct)
+    {
+        var email = principal.FindFirstValue(ClaimTypes.Email);
+        if (!TokenUtilities.IsValidEmail(email)) return Results.BadRequest(new { message = "Your administrator account has no valid email address." });
+        try
+        {
+            await emailService.SendTestAsync(email!, ct);
+            return Results.Ok(new { message = $"Test email accepted by Resend for {email}." });
+        }
+        catch (Exception exception)
+        {
+            return Results.Problem(exception.Message, statusCode: 503);
+        }
     }
 
     private static async Task<IResult> RegisterAsync(

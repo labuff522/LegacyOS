@@ -30,12 +30,27 @@ public sealed class PasswordResetEmailService(HttpClient http, IConfiguration co
             $"<p>Your family has been added to DenOS.</p><p><a href=\"{HtmlEncoder.Default.Encode(invitationUrl)}\">Create your password and access your family account</a></p><p>This invitation expires in 48 hours and can be used once.</p>", apiKey, from, ct);
     }
 
+    public async Task SendTestAsync(string email, CancellationToken ct)
+    {
+        var apiKey = configuration["Email:ResendApiKey"];
+        var from = configuration["Email:From"];
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(from))
+            throw new InvalidOperationException("Email__ResendApiKey or Email__From is missing in the hosted API environment.");
+        await SendCoreAsync(email, "DenOS email delivery test",
+            "<p>Your DenOS email configuration is working.</p>", apiKey, from, ct);
+    }
+
     private async Task SendCoreAsync(string email, string subject, string html, string apiKey, string from, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "emails");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Content = JsonContent.Create(new { from, to = new[] { email }, subject, html });
         using var response = await http.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            if (detail.Length > 1000) detail = detail[..1000];
+            throw new InvalidOperationException($"Resend rejected the email ({(int)response.StatusCode}): {detail}");
+        }
     }
 }

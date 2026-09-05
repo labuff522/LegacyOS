@@ -54,11 +54,18 @@ export function AccessUsersPage() {
     } catch (reason) { setError(apiError(reason)); }
   }
 
+  async function testEmail() {
+    setSaving(true); setError(''); setMessage('');
+    try { const response = await http.post<{ message: string }>('/staff/email/test'); setMessage(response.data.message); }
+    catch (reason) { const response = reason as { response?: { data?: { detail?: string } } }; setError(response.response?.data?.detail ?? 'Email test failed.'); }
+    finally { setSaving(false); }
+  }
+
   return <>
     <PageHeader title="Administrator access" subtitle="Create, reset, and deactivate staff sign-in accounts without deleting audit history." />
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
-    <Button variant="contained" onClick={() => { setPassword(''); setCreateOpen(true); }}>Add administrator</Button>
+    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}><Button variant="contained" onClick={() => { setPassword(''); setCreateOpen(true); }}>Add administrator</Button><Button variant="outlined" disabled={saving} onClick={testEmail}>Send test email to me</Button></Stack>
     <Stack spacing={2} sx={{ mt: 3 }}>{users.map(user => <Card key={user.id}><CardContent>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}>
         <div><Typography variant="h6">{user.email}</Typography><Typography color="text.secondary">Created {new Date(user.createdOn).toLocaleDateString()}</Typography></div>

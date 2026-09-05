@@ -101,6 +101,9 @@ Check(portalSource.Contains("/staff/guardians/{guardianId:guid}/password") &&
       portalSource.Contains("This guardian has no login account") && portalSource.Contains("session.RevokedOn = now"),
     "staff can reset an existing parent password while revoking active sessions");
 var emailSource = Source("backend/LegacyOS.Api/Features/Portal/PasswordResetEmailService.cs");
+Check(portalSource.Contains("/staff/email/test") && portalSource.Contains("RequireAuthorization(\"StaffOnly\")") &&
+      emailSource.Contains("Resend rejected the email") && emailSource.Contains("Email__ResendApiKey or Email__From is missing"),
+    "staff can diagnose hosted Resend configuration without exposing the API key");
 Check(emailSource.Contains("/portal/accept-invitation?token=") && !emailSource.Contains("/portal/register?token="),
     "parent invitations use the existing-family account activation route instead of self-registration");
 Check(portalSource.Contains("NormalizeEmail(invitation.Guardian.Email) != normalizedEmail"),
