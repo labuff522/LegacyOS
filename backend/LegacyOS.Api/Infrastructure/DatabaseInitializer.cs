@@ -199,24 +199,36 @@ public static class DatabaseInitializer
             return;
         }
 
+        if (password.Length < 12)
+            throw new InvalidOperationException("BootstrapStaff:Password must be at least 12 characters.");
+
         var normalizedEmail = TokenUtilities.NormalizeEmail(email);
         var existing = await db.PortalUsers.SingleOrDefaultAsync(x => x.NormalizedEmail == normalizedEmail);
         if (existing is not null)
         {
+            if (configuration.GetValue<bool>("BootstrapStaff:ResetExistingPassword") && existing.Role == PortalRoles.Staff)
+            {
+                var passwordHasher = services.GetRequiredService<IPasswordHasher<PortalUser>>();
+                existing.PasswordHash = passwordHasher.HashPassword(existing, password);
+                existing.IsActive = true;
+                var now = DateTime.UtcNow;
+                var sessions = await db.PortalAccessTokens.Where(x => x.PortalUserId == existing.Id && x.RevokedOn == null).ToListAsync();
+                foreach (var session in sessions) session.RevokedOn = now;
+                await db.SaveChangesAsync();
+                logger.LogWarning("Bootstrap administrator password was reset by the one-time recovery switch. Remove BootstrapStaff__ResetExistingPassword now.");
+                return;
+            }
             logger.LogInformation("Bootstrap administrator already exists with role {Role} and active status {IsActive}; its password was not changed.", existing.Role, existing.IsActive);
             return;
         }
-
-        if (password.Length < 12)
-            throw new InvalidOperationException("BootstrapStaff:Password must be at least 12 characters.");
 
         var user = new PortalUser
         {
             Id = Guid.NewGuid(), Email = email.Trim(), NormalizedEmail = normalizedEmail,
             Role = PortalRoles.Staff, CreatedOn = DateTime.UtcNow
         };
-        var passwordHasher = services.GetRequiredService<IPasswordHasher<PortalUser>>();
-        user.PasswordHash = passwordHasher.HashPassword(user, password);
+        var newUserPasswordHasher = services.GetRequiredService<IPasswordHasher<PortalUser>>();
+        user.PasswordHash = newUserPasswordHasher.HashPassword(user, password);
         db.PortalUsers.Add(user);
         await db.SaveChangesAsync();
         logger.LogInformation("Bootstrap administrator account was created successfully.");

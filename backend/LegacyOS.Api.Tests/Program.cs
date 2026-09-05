@@ -73,6 +73,9 @@ var initializerSource = Source("backend/LegacyOS.Api/Infrastructure/DatabaseInit
 Check(initializerSource.Contains("Bootstrap administrator account was created successfully") &&
       initializerSource.Contains("its password was not changed") && initializerSource.Contains("BootstrapStaff__Email or BootstrapStaff__Password is missing"),
     "bootstrap administrator startup state is diagnosable without logging credentials");
+Check(initializerSource.Contains("BootstrapStaff:ResetExistingPassword") && initializerSource.Contains("existing.Role == PortalRoles.Staff") &&
+      initializerSource.Contains("session.RevokedOn = now") && initializerSource.Contains("Remove BootstrapStaff__ResetExistingPassword now"),
+    "one-time bootstrap recovery can reset only the configured staff account and revoke sessions");
 Check(portalSource.Contains("MapGroup(\"/portal\").RequireAuthorization(\"CustomerOnly\")"),
     "customer portal requires the customer policy");
 Check(portalSource.Contains("Where(g => g.Id == guardianId"),
