@@ -54,3 +54,4 @@ export async function getFamilyOrders(familyId: string) { return (await http.get
 export async function reconcileOrder(orderId: string) { return (await http.post<{ status: string; paymentStatus?: string }>(`/staff/purchases/${orderId}/reconcile`)).data; }
 export async function refundOrder(orderId: string, reason: string) { return (await http.post<{ status: string }>(`/staff/purchases/${orderId}/refund`, { reason })).data; }
 export async function sendParentInvitation(guardianId: string) { return (await http.post<{ message: string }>(`/staff/guardian-invitations`, { guardianId })).data; }
+export async function resetParentPassword(guardianId: string, password: string) { await http.put(`/staff/guardians/${guardianId}/password`, { password }); }

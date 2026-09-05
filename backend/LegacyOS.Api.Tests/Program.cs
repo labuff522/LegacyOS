@@ -94,6 +94,9 @@ Check(portalSource.Contains("invitation.AcceptedOn != null") && portalSource.Con
     "registration invitations are one-time and expiring");
 Check(portalSource.Contains("SendInvitationAsync") && !portalSource.Contains("invitationToken = rawToken"),
     "staff-created parent invitations are emailed without exposing the raw token in the API response");
+Check(portalSource.Contains("/staff/guardians/{guardianId:guid}/password") &&
+      portalSource.Contains("This guardian has no login account") && portalSource.Contains("session.RevokedOn = now"),
+    "staff can reset an existing parent password while revoking active sessions");
 var emailSource = Source("backend/LegacyOS.Api/Features/Portal/PasswordResetEmailService.cs");
 Check(emailSource.Contains("/portal/accept-invitation?token=") && !emailSource.Contains("/portal/register?token="),
     "parent invitations use the existing-family account activation route instead of self-registration");

@@ -32,6 +32,8 @@ public static class PortalEndpoints
 
         app.MapPost("/staff/guardian-invitations", CreateInvitationAsync)
             .RequireAuthorization("StaffOnly");
+        app.MapPut("/staff/guardians/{guardianId:guid}/password", ResetGuardianPasswordAsync)
+            .RequireAuthorization("StaffOnly");
 
         return portal;
     }
@@ -296,6 +298,21 @@ public static class PortalEndpoints
         return Results.Accepted(value: new { message = "Parent invitation sent.", guardian.Email, expiresOn = now.AddHours(48) });
     }
 
+    private static async Task<IResult> ResetGuardianPasswordAsync(Guid guardianId, ResetGuardianPasswordRequest request,
+        LegacyOSDbContext db, IPasswordHasher<PortalUser> passwordHasher, CancellationToken ct)
+    {
+        if (request.Password is null || request.Password.Length < 12)
+            return Results.BadRequest(new { message = "Temporary password must be at least 12 characters." });
+        var user = await db.PortalUsers.SingleOrDefaultAsync(x => x.GuardianId == guardianId && x.Role == PortalRoles.Customer, ct);
+        if (user is null) return Results.Conflict(new { message = "This guardian has no login account. Send a parent invitation instead." });
+        user.PasswordHash = passwordHasher.HashPassword(user, request.Password);
+        var now = DateTime.UtcNow;
+        var sessions = await db.PortalAccessTokens.Where(x => x.PortalUserId == user.Id && x.RevokedOn == null).ToListAsync(ct);
+        foreach (var session in sessions) session.RevokedOn = now;
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+
     private static AuthResponse AddAccessToken(LegacyOSDbContext db, PortalUser user, DateTime now)
     {
         var rawToken = TokenUtilities.CreateToken();
@@ -316,6 +333,7 @@ public record ResetPasswordRequest(string? Email, string? Token, string? Passwor
 public record UpdateOwnEmailRequest(string NewEmail, string CurrentPassword);
 public record AddOwnAthleteRequest(string FirstName, string LastName, DateOnly DateOfBirth, string? Gender, string UsaWrestlingMembershipNumber);
 public record CreateInvitationRequest(Guid GuardianId);
+public record ResetGuardianPasswordRequest(string? Password);
 public record AuthResponse(string AccessToken, DateTime ExpiresOn, string Email, string Role);
 public record SelfRegisterRequest(string FamilyName, string GuardianFirstName, string GuardianLastName, string Email,
     string Phone, string Password, string SignedName, List<Guid> AcceptedWaiverIds, List<SelfRegisterAthlete> Athletes);
